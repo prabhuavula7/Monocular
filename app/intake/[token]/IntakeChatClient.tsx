@@ -58,7 +58,7 @@ function MessageBubble({ message, streaming, streamText }: MessageBubbleProps) {
       <div
         className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
           isUser
-            ? 'bg-gray-900 text-white rounded-br-sm'
+            ? 'bg-orange-500 text-white rounded-br-sm'
             : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-sm'
         }`}
       >
@@ -228,12 +228,16 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
       <div className="bg-white border-b border-gray-100 px-4 py-3">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-gray-500">{agencyName}</span>
+            <img
+              src="/monocular_logo_pack/monocular-horizontal-black.svg"
+              alt="Monocular"
+              className="h-5 w-auto"
+            />
             <span className="text-xs text-gray-400">{STAGE_LABELS[stage]}</span>
           </div>
           <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
             <div
-              className={`h-full bg-gray-900 rounded-full transition-all duration-500 ${STAGE_WIDTHS[stage]}`}
+              className={`h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full transition-all duration-500 ${STAGE_WIDTHS[stage]}`}
             />
           </div>
         </div>
@@ -282,13 +286,13 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
               placeholder="Type your message..."
               disabled={isLoading || !isStarted}
               rows={1}
-              className="flex-1 resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed max-h-32 overflow-y-auto"
+              className="flex-1 resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed max-h-32 overflow-y-auto"
               style={{ minHeight: '44px' }}
             />
             <button
               onClick={sendMessage}
               disabled={isLoading || !inputValue.trim() || !isStarted}
-              className="flex-shrink-0 w-10 h-10 bg-gray-900 text-white rounded-xl flex items-center justify-center hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="flex-shrink-0 w-10 h-10 bg-orange-500 text-white rounded-xl flex items-center justify-center hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />

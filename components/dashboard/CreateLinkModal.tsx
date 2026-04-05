@@ -26,7 +26,7 @@ export function CreateLinkModal({ open, onClose }: Props) {
     if (!open) return
     fetch('/api/settings/project-types')
       .then((r) => r.json())
-      .then(setProjectTypes)
+      .then((data) => setProjectTypes(Array.isArray(data) ? data : []))
       .catch(() => {})
   }, [open])
 
@@ -87,7 +87,7 @@ export function CreateLinkModal({ open, onClose }: Props) {
               <select
                 value={projectTypeId}
                 onChange={(e) => setProjectTypeId(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
                 <option value="">General (no project type)</option>
                 {projectTypes.map((pt) => (
@@ -105,7 +105,7 @@ export function CreateLinkModal({ open, onClose }: Props) {
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
                 placeholder="Acme Corp"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
 
@@ -118,14 +118,14 @@ export function CreateLinkModal({ open, onClose }: Props) {
                 value={clientEmail}
                 onChange={(e) => setClientEmail(e.target.value)}
                 placeholder="contact@acme.com"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
 
             <button
               onClick={handleCreate}
               disabled={isLoading}
-              className="w-full bg-gray-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition-colors"
+              className="w-full bg-orange-500 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-orange-600 disabled:opacity-50 transition-colors"
             >
               {isLoading ? 'Creating...' : 'Create Link'}
             </button>
@@ -145,7 +145,7 @@ export function CreateLinkModal({ open, onClose }: Props) {
                 />
                 <button
                   onClick={handleCopy}
-                  className="flex-shrink-0 flex items-center gap-1.5 bg-gray-900 text-white rounded-lg px-3 py-2 text-xs font-medium hover:bg-gray-700 transition-colors"
+                  className="flex-shrink-0 flex items-center gap-1.5 bg-orange-500 text-white rounded-lg px-3 py-2 text-xs font-medium hover:bg-orange-600 transition-colors"
                 >
                   {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   {copied ? 'Copied' : 'Copy'}

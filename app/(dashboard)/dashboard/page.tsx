@@ -42,7 +42,7 @@ export default function DashboardPage() {
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
+          className="flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors"
         >
           <Plus className="w-4 h-4" />
           Create Intake Link
@@ -67,7 +67,7 @@ export default function DashboardPage() {
           </p>
           <button
             onClick={() => setModalOpen(true)}
-            className="mt-4 text-sm text-gray-900 underline underline-offset-2"
+            className="mt-4 text-sm text-orange-500 underline underline-offset-2"
           >
             Create your first intake link
           </button>

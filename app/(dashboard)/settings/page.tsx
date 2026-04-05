@@ -97,7 +97,7 @@ export default function SettingsPage() {
           <select
             value={tone}
             onChange={(e) => setTone(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
           >
             <option value="professional">Professional</option>
             <option value="consultative">Consultative</option>
@@ -114,7 +114,7 @@ export default function SettingsPage() {
               value={rateMin}
               onChange={(e) => setRateMin(e.target.value)}
               placeholder="e.g. 10000"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
           <div>
@@ -124,7 +124,7 @@ export default function SettingsPage() {
               value={rateMax}
               onChange={(e) => setRateMax(e.target.value)}
               placeholder="e.g. 80000"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
         </div>
@@ -138,7 +138,7 @@ export default function SettingsPage() {
             onChange={(e) => setAssumptions(e.target.value)}
             rows={4}
             placeholder="Client provides all content and copy&#10;Hosting is client's responsibility&#10;..."
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
           />
         </div>
 
@@ -151,14 +151,14 @@ export default function SettingsPage() {
             onChange={(e) => setRiskFlags(e.target.value)}
             rows={3}
             placeholder="Always ask if they have an existing CRM contract&#10;..."
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
           />
         </div>
 
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition-colors"
+          className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50 transition-colors"
         >
           {isSaving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
         </button>
