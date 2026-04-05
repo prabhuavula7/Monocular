@@ -77,7 +77,7 @@ export default function DashboardPage() {
           {scopes.map((scope) => (
             <Link
               key={scope.id}
-              href={`/dashboard/scopes/${scope.id}`}
+              href={`/scopes/${scope.id}`}
               className="block bg-white rounded-xl border border-gray-100 px-5 py-4 hover:border-gray-200 hover:shadow-sm transition-all"
             >
               <div className="flex items-center justify-between">

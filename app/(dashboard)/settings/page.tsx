@@ -67,7 +67,7 @@ export default function SettingsPage() {
 
       {/* Project types link */}
       <Link
-        href="/dashboard/settings/project-types"
+        href="/settings/project-types"
         className="flex items-center justify-between bg-white rounded-xl border border-gray-100 px-5 py-4 hover:border-gray-200 transition-colors mb-8"
       >
         <div>

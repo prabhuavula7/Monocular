@@ -13,7 +13,7 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   const { orgId } = await auth()
-  if (!orgId) redirect('/sign-in')
+  if (!orgId) redirect('/create-org')
 
   const [agency] = await db
     .select({ name: agencies.name })
@@ -41,7 +41,7 @@ export default async function DashboardLayout({
             Dashboard
           </Link>
           <Link
-            href="/dashboard/settings"
+            href="/settings"
             className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors"
           >
             <Settings className="w-4 h-4" />
