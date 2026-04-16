@@ -163,8 +163,8 @@ After any settings save that changes agency-level data, call `router.refresh()` 
 
 ## What's not built yet
 
-- **Send scope to client** — Resend helper exists at `lib/resend.ts`; no send-to-client flow wired yet. Requires a send action in the scope editor and a `/api/scopes/[id]/send` route. **`clientEmail` must be present on the scope to enable this.** Next in priority.
-- **Client scope acceptance** — no client-facing scope review/sign-off flow; would connect back to iterative intake with prior scope as memory baseline
+- **Send scope to client** — ✅ Done. `/api/scopes/[id]/send` route generates PDF, emails via Resend, updates status to `sent`. Button in scope editor toolbar, disabled when `clientEmail` is absent. **Email is dev-guarded** (`NODE_ENV === 'development'` skips the send and logs to console). Resend requires a verified sender domain — `prabhuavula7@gmail.com` is unverified. Fix before production: either verify a domain in Resend dashboard (recommended: `monocular.so`) or swap transport to Nodemailer + Gmail SMTP with an App Password.
+- **Client scope acceptance** — ✅ Done. `POST /api/scopes/[id]/review-link` generates an opaque `reviewToken`. Public page at `/review/[token]` shows scope read-only with Approve / Request Changes actions. Approve → sets `status: won`. Request Changes → saves `clientFeedback`, sets `status: in_review`, redirects client to intake link for iterative revision round. "Share" button in scope editor toolbar copies the review URL to clipboard. **Requires DB migration** (run once in Supabase SQL editor): `ALTER TABLE scopes ADD COLUMN IF NOT EXISTS review_token text UNIQUE; ALTER TABLE scopes ADD COLUMN IF NOT EXISTS client_feedback text;`
 - **Team management / admin console** — placeholder in Account page; roles (Admin, Ops, Team Member), org email vs personal email segregation planned
 - **Inngest production keys** — `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY` still need wiring for production
 - **Clerk webhook production config** — `organization.created` webhook needs to point to production URL
@@ -187,8 +187,8 @@ This section is the source of truth for the next major build phase. The goal is 
 3. ~~**P2: Agency notification on intake complete**~~ ✅ Done (Resend, fires in `after()`)
 4. ~~**PDF stale indicator**~~ ✅ Done
 5. ~~**Version history strip + scopes list grouping**~~ ✅ Done
-6. **P1: Send scope to client** — next up
-7. **P2: Client-facing scope acceptance / revision loop**
+6. ~~**P1: Send scope to client**~~ ✅ Done
+7. ~~**P2: Client-facing scope acceptance / revision loop**~~ ✅ Done
 8. **P3: Team management / admin console**
 9. **P3: Production infrastructure wiring**
 

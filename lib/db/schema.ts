@@ -140,6 +140,8 @@ export const scopes = pgTable('scopes', {
   generatedScope: jsonb('generated_scope'),               // GeneratedScope
   agencyNotes: text('agency_notes'),
   pdfUrl: text('pdf_url'),
+  reviewToken: text('review_token').unique(),
+  clientFeedback: text('client_feedback'),
   wonAt: timestamp('won_at'),
   lostAt: timestamp('lost_at'),
   lostReason: text('lost_reason'),

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { agencies, scopes } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { generateAndUploadPdf } from '@/lib/pdf-utils'
+import { nanoid } from 'nanoid'
 
 export async function POST(
   _req: NextRequest,
@@ -23,20 +23,24 @@ export async function POST(
   if (!agency) return NextResponse.json({ error: 'Agency not found' }, { status: 404 })
 
   const [scope] = await db
-    .select()
+    .select({ id: scopes.id, agencyId: scopes.agencyId, reviewToken: scopes.reviewToken })
     .from(scopes)
     .where(eq(scopes.id, id))
     .limit(1)
 
-  if (!scope || scope.agencyId !== agency.id || !scope.generatedScope) {
+  if (!scope || scope.agencyId !== agency.id) {
     return NextResponse.json({ error: 'Scope not found' }, { status: 404 })
   }
 
-  try {
-    const url = await generateAndUploadPdf(scope, agency)
-    return NextResponse.json({ url })
-  } catch (err) {
-    console.error('[export] PDF generation error', err)
-    return NextResponse.json({ error: 'PDF export failed' }, { status: 500 })
+  let reviewToken = scope.reviewToken
+  if (!reviewToken) {
+    reviewToken = nanoid(32)
+    await db
+      .update(scopes)
+      .set({ reviewToken, updatedAt: new Date() })
+      .where(eq(scopes.id, id))
   }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  return NextResponse.json({ url: `${appUrl}/review/${reviewToken}` })
 }

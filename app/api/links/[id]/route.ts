@@ -1,9 +1,10 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { agencies, intakeLinks } from '@/lib/db/schema'
+import { agencies, intakeIterations, intakeLinks, scopes } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { z } from 'zod'
+import { buildScopeName } from '@/lib/scope-utils'
 
 const UpdateLinkSchema = z.object({
   label:               z.string().max(200).optional().nullable(),
@@ -67,6 +68,49 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .returning()
 
   if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Fields that map directly onto scope columns
+  const scopePatch: Record<string, unknown> = {}
+  if (updates.clientName  !== undefined) scopePatch.clientName  = updates.clientName
+  if (updates.clientEmail !== undefined) scopePatch.clientEmail = updates.clientEmail
+
+  // Fields that affect the computed scope display name
+  const nameFields = ['clientCompany', 'clientName', 'label'] as const
+  const nameChanged = nameFields.some(f => updates[f] !== undefined)
+
+  if (Object.keys(scopePatch).length > 0 || nameChanged) {
+    if (nameChanged) {
+      // Each scope has a different iteration number so names must be recomputed individually
+      const linkContext = {
+        clientCompany: updated.clientCompany,
+        clientName:    updated.clientName,
+        label:         updated.label,
+      }
+
+      const linkScopes = await db
+        .select({ id: scopes.id, iterationNumber: intakeIterations.iterationNumber })
+        .from(scopes)
+        .leftJoin(intakeIterations, eq(intakeIterations.scopeId, scopes.id))
+        .where(eq(scopes.intakeLinkId, id))
+
+      for (const s of linkScopes) {
+        await db
+          .update(scopes)
+          .set({
+            ...scopePatch,
+            name: buildScopeName(linkContext, s.iterationNumber ?? 1),
+            updatedAt: new Date(),
+          })
+          .where(eq(scopes.id, s.id))
+      }
+    } else {
+      await db
+        .update(scopes)
+        .set({ ...scopePatch, updatedAt: new Date() })
+        .where(eq(scopes.intakeLinkId, id))
+    }
+  }
+
   return NextResponse.json(updated)
 }
 

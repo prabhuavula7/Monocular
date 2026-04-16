@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Download, CheckCircle, Plus, X, ChevronUp, ChevronDown, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Download, CheckCircle, Plus, X, ChevronUp, ChevronDown, AlertCircle, Send, Link } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import type { GeneratedScope, Message, RiskFlag, Deliverable, Milestone } from '@/types'
 
@@ -387,9 +387,23 @@ export default function ScopeEditorClient({ scope, versions = [] }: Props) {
 
   const [status, setStatus] = useState<Status>(scope.status)
   const [generated, setGenerated] = useState<GeneratedScope | null>(scope.generatedScope)
+  const [clientEmail, setClientEmail] = useState<string | null>(scope.clientEmail)
   const [isExporting, setIsExporting] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+  const [sendDone, setSendDone] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
   const [isRetrying, setIsRetrying] = useState(false)
   const [pdfIsStale, setPdfIsStale] = useState(false)
+
+  // Hydrate clientEmail from DB on mount — the server-rendered value may be stale
+  // if the intake link was edited after this page was last rendered.
+  useEffect(() => {
+    fetch(`/api/scopes/${scope.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.clientEmail !== undefined) setClientEmail(data.clientEmail) })
+      .catch(() => {})
+  }, [scope.id])
 
   // Resizable transcript panel
   const TRANSCRIPT_MIN = 240
@@ -448,6 +462,33 @@ export default function ScopeEditorClient({ scope, versions = [] }: Props) {
   async function handleStatusChange(newStatus: Status) {
     setStatus(newStatus)
     await save({ status: newStatus })
+  }
+
+  async function handleShare() {
+    setIsSharing(true)
+    try {
+      const res = await fetch(`/api/scopes/${scope.id}/review-link`, { method: 'POST' })
+      const data = await res.json()
+      if (data.url) {
+        await navigator.clipboard.writeText(data.url)
+        setShareCopied(true)
+        setTimeout(() => setShareCopied(false), 2500)
+      }
+    } catch {}
+    setIsSharing(false)
+  }
+
+  async function handleSendToClient() {
+    setIsSending(true)
+    try {
+      const res = await fetch(`/api/scopes/${scope.id}/send`, { method: 'POST' })
+      if (res.ok) {
+        setStatus('sent')
+        setSendDone(true)
+        setTimeout(() => setSendDone(false), 3000)
+      }
+    } catch {}
+    setIsSending(false)
   }
 
   async function handleExportPdf() {
@@ -646,6 +687,38 @@ export default function ScopeEditorClient({ scope, versions = [] }: Props) {
           </select>
 
           <button
+            onClick={handleShare}
+            disabled={isSharing}
+            title="Copy client review link"
+            className="flex items-center gap-1.5 border border-line text-ink-2 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-panel-hover disabled:opacity-40 transition-colors"
+          >
+            {shareCopied ? (
+              <><CheckCircle className="w-3 h-3 text-green-500" /> Copied</>
+            ) : (
+              <><Link className="w-3 h-3" />{isSharing ? 'Generating…' : 'Share'}</>
+            )}
+          </button>
+
+          <button
+            onClick={handleSendToClient}
+            disabled={isSending || !clientEmail}
+            title={!clientEmail ? 'No client email on file' : undefined}
+            className="flex items-center gap-1.5 bg-orange-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:opacity-80 disabled:opacity-40 transition-opacity"
+          >
+            {sendDone ? (
+              <>
+                <CheckCircle className="w-3 h-3" />
+                Sent
+              </>
+            ) : (
+              <>
+                <Send className="w-3 h-3" />
+                {isSending ? 'Sending…' : 'Send to client'}
+              </>
+            )}
+          </button>
+
+          <button
             onClick={handleExportPdf}
             disabled={isExporting}
             title={pdfIsStale ? 'Changes made since last export' : undefined}
@@ -703,10 +776,10 @@ export default function ScopeEditorClient({ scope, versions = [] }: Props) {
                 {scope.name ?? scope.clientName ?? 'Untitled scope'}
               </h1>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                {scope.clientEmail && (
-                  <span className="text-sm text-ink-3">{scope.clientEmail}</span>
+                {clientEmail && (
+                  <span className="text-sm text-ink-3">{clientEmail}</span>
                 )}
-                {scope.clientEmail && createdDate && (
+                {clientEmail && createdDate && (
                   <span className="text-ink-3">·</span>
                 )}
                 {createdDate && (

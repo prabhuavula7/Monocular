@@ -7,6 +7,7 @@ import { and, eq } from 'drizzle-orm'
 import { inngest } from '@/inngest/client'
 import { runGenerateScope } from '@/lib/run-generate-scope'
 import { getResend } from '@/lib/resend'
+import { buildScopeName } from '@/lib/scope-utils'
 import type { Message } from '@/types'
 
 /** Deterministic conversation summary from user messages in the transcript */
@@ -21,26 +22,6 @@ function buildConversationSummary(messages: Message[]): string {
       return `${i + 1}. ${text}`
     })
     .join('\n')
-}
-
-/**
- * Builds the display name for a scope.
- * Format: "{ClientCompany} — {Label} v{N}"
- * Each segment degrades gracefully if the field is empty.
- */
-function buildScopeName(
-  link: { clientCompany?: string | null; clientName?: string | null; label?: string | null },
-  iterationNumber: number,
-  projectTypeName?: string | null,
-): string {
-  const client = link.clientCompany || link.clientName || null
-  const project = link.label || projectTypeName || null
-  const version = `v${iterationNumber}`
-
-  if (client && project) return `${client} — ${project} ${version}`
-  if (client) return `${client} ${version}`
-  if (project) return `${project} ${version}`
-  return `Scope ${version}`
 }
 
 /**

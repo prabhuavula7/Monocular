@@ -70,10 +70,10 @@ function EditModal({ link, onSave, onClose }: {
     if (!validate()) return
     setSaving(true)
     await onSave(link.id, {
-      label: label || undefined,
-      clientName: clientName || undefined,
-      clientEmail: clientEmail || undefined,
-      clientCompany: clientCompany || undefined,
+      label: label || null,
+      clientName: clientName || null,
+      clientEmail: clientEmail || null,
+      clientCompany: clientCompany || null,
     })
     setSaving(false)
     onClose()
@@ -145,12 +145,13 @@ export default function IntakePage() {
   useEffect(() => { if (!modalOpen) fetchLinks() }, [modalOpen, fetchLinks])
 
   async function handleEdit(id: string, data: Record<string, unknown>) {
-    await fetch(`/api/links/${id}`, {
+    const res = await fetch(`/api/links/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
-    setLinks(prev => prev.map(l => l.id === id ? { ...l, ...data } as IntakeLink : l))
+    const updated = await res.json()
+    setLinks(prev => prev.map(l => l.id === id ? { ...l, ...updated } as IntakeLink : l))
   }
 
   async function handleToggleDeprecate(link: IntakeLink) {
