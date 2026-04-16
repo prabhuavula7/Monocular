@@ -41,54 +41,54 @@ export default function ProjectTypesPage() {
   return (
     <div className="max-w-2xl mx-auto px-6 py-8">
       <div className="flex items-center gap-3 mb-8">
-        <Link href="/settings" className="text-gray-400 hover:text-gray-600">
+        <Link href="/settings" className="text-ink-3 hover:text-ink-2 transition-colors">
           <ChevronLeft className="w-4 h-4" />
         </Link>
-        <h1 className="text-xl font-semibold text-gray-900">Project Types</h1>
+        <h1 className="text-xl font-semibold text-ink">Project Types</h1>
       </div>
 
       <div className="space-y-2 mb-4">
         {isLoading ? (
           [1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-100 p-4 animate-pulse h-16" />
+            <div key={i} className="bg-panel border border-line rounded-xl p-4 animate-pulse h-16" />
           ))
         ) : types.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No project types yet.</p>
+          <p className="text-sm text-ink-3 text-center py-8">No project types yet.</p>
         ) : (
           types.map((pt) => (
             <div
               key={pt.id}
-              className="flex items-center justify-between bg-white rounded-xl border border-gray-100 px-5 py-3"
+              className="flex items-center justify-between bg-panel border border-line rounded-xl px-5 py-3 panel-shadow"
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-gray-900">{pt.name}</p>
+                  <p className="text-sm font-medium text-ink">{pt.name}</p>
                   {!pt.isActive && <Badge variant="gray">Inactive</Badge>}
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {pt.milestonePattern.map((phase) => (
-                    <span key={phase} className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                    <span key={phase} className="text-[10px] bg-panel-hover border border-line text-ink-3 px-1.5 py-0.5 rounded">
                       {phase}
                     </span>
                   ))}
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+              <div className="flex items-center gap-3 flex-shrink-0 ml-4">
                 <button
                   onClick={() => toggleActive(pt.id, pt.isActive)}
-                  className="text-xs text-gray-500 hover:text-gray-700"
+                  className="text-xs text-ink-2 hover:text-ink transition-colors"
                 >
                   {pt.isActive ? 'Deactivate' : 'Activate'}
                 </button>
                 <Link
                   href={`/settings/project-types/${pt.id}`}
-                  className="text-xs text-gray-500 hover:text-gray-700"
+                  className="text-xs text-ink-2 hover:text-ink transition-colors"
                 >
                   Edit
                 </Link>
                 <button
                   onClick={() => handleDelete(pt.id)}
-                  className="text-xs text-red-400 hover:text-red-600"
+                  className="text-xs text-red-500 hover:text-red-400 transition-colors"
                 >
                   Delete
                 </button>
@@ -100,7 +100,7 @@ export default function ProjectTypesPage() {
 
       <Link
         href="/settings/project-types/new"
-        className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 border border-dashed border-gray-200 rounded-xl px-5 py-3 hover:border-gray-300 transition-colors"
+        className="flex items-center gap-2 text-sm text-ink-2 hover:text-ink border border-dashed border-line hover:border-line rounded-xl px-5 py-3 transition-colors"
       >
         <Plus className="w-4 h-4" />
         Add project type

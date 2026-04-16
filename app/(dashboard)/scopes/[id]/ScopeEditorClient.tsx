@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Download, AlertTriangle, CheckCircle } from 'lucide-react'
 import { ScopeStatusBadge } from '@/components/dashboard/ScopeStatusBadge'
@@ -27,9 +27,9 @@ interface Props {
 }
 
 const CONFIDENCE_CONFIG = {
-  high: { label: 'Complete intake', variant: 'green' as const },
-  medium: { label: 'Some gaps — review assumptions', variant: 'amber' as const },
-  low: { label: 'Short intake — significant gaps likely', variant: 'red' as const },
+  high:   { label: 'Complete intake',                    variant: 'green' as const },
+  medium: { label: 'Some gaps — review assumptions',     variant: 'amber' as const },
+  low:    { label: 'Short intake — significant gaps',    variant: 'red'   as const },
 }
 
 function useAutoSave(scopeId: string) {
@@ -66,6 +66,33 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
   const [generated, setGenerated] = useState<GeneratedScope | null>(scope.generatedScope)
   const [isExporting, setIsExporting] = useState(false)
   const [reviewDismissed, setReviewDismissed] = useState(false)
+  const [isRetrying, setIsRetrying] = useState(false)
+
+  // Poll for generated scope every 4s until it appears
+  useEffect(() => {
+    if (generated) return
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/scopes/${scope.id}`)
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.generatedScope) {
+          setGenerated(data.generatedScope as GeneratedScope)
+        }
+      } catch {}
+    }, 4000)
+    return () => clearInterval(interval)
+  }, [scope.id, generated])
+
+  async function handleRetryGenerate() {
+    setIsRetrying(true)
+    try {
+      const res = await fetch(`/api/scopes/${scope.id}/generate`, { method: 'POST' })
+      const data = await res.json()
+      if (data.generatedScope) setGenerated(data.generatedScope as GeneratedScope)
+    } catch {}
+    setIsRetrying(false)
+  }
 
   const showReviewBanner =
     !reviewDismissed &&
@@ -104,14 +131,21 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
       <div className="max-w-5xl mx-auto px-6 py-8">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6"
+          className="flex items-center gap-2 text-sm text-ink-2 hover:text-ink mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-          <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-700 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm font-medium text-gray-700">Generating scope...</p>
-          <p className="text-xs text-gray-400 mt-1">This usually takes 10–30 seconds. Refresh in a moment.</p>
+        <div className="bg-panel border border-line rounded-2xl p-12 text-center panel-shadow">
+          <div className="w-8 h-8 border-2 border-line border-t-orange rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm font-medium text-ink">Generating scope...</p>
+          <p className="text-xs text-ink-3 mt-1.5">Checking automatically every few seconds.</p>
+          <button
+            onClick={handleRetryGenerate}
+            disabled={isRetrying}
+            className="mt-5 text-xs text-ink-3 hover:text-orange underline underline-offset-2 transition-colors disabled:opacity-50"
+          >
+            {isRetrying ? 'Generating...' : 'Taking too long? Click to retry'}
+          </button>
         </div>
       </div>
     )
@@ -119,11 +153,12 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
+
       {/* Top bar */}
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
+          className="flex items-center gap-2 text-sm text-ink-2 hover:text-ink transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back
@@ -131,10 +166,10 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
 
         <div className="flex items-center gap-3">
           {saveState === 'saving' && (
-            <span className="text-xs text-gray-400">Saving...</span>
+            <span className="text-xs text-ink-3">Saving...</span>
           )}
           {saveState === 'saved' && (
-            <span className="text-xs text-green-600 flex items-center gap-1">
+            <span className="text-xs text-green-500 flex items-center gap-1">
               <CheckCircle className="w-3 h-3" /> Saved
             </span>
           )}
@@ -142,7 +177,7 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
           <select
             value={status}
             onChange={(e) => handleStatusChange(e.target.value as Status)}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="text-sm border border-line bg-panel text-ink rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange/40 transition-shadow"
           >
             <option value="draft">Draft</option>
             <option value="in_review">In Review</option>
@@ -156,7 +191,7 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
           <button
             onClick={handleExportPdf}
             disabled={isExporting}
-            className="flex items-center gap-1.5 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 bg-ink text-canvas px-3 py-1.5 rounded-lg text-sm font-medium hover:opacity-80 disabled:opacity-40 transition-opacity"
           >
             <Download className="w-3.5 h-3.5" />
             {isExporting ? 'Exporting...' : 'Export PDF'}
@@ -166,14 +201,14 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
 
       {/* Review banner */}
       {showReviewBanner && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6 flex items-start justify-between gap-4">
+        <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3 mb-6 flex items-start justify-between gap-4">
           <div className="flex items-start gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-amber-800">Review required before sending</p>
+              <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Review required before sending</p>
               <ul className="mt-1 space-y-0.5">
                 {generated.reviewFlags.map((flag) => (
-                  <li key={flag.id} className="text-xs text-amber-700">
+                  <li key={flag.id} className="text-xs text-amber-600/80 dark:text-amber-400/80">
                     • {flag.message}
                   </li>
                 ))}
@@ -182,7 +217,7 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
           </div>
           <button
             onClick={() => setReviewDismissed(true)}
-            className="text-xs text-amber-600 hover:text-amber-800 flex-shrink-0"
+            className="text-xs text-amber-500 hover:text-amber-400 flex-shrink-0"
           >
             Dismiss
           </button>
@@ -192,11 +227,11 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
       {/* Client header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">
+          <h1 className="text-lg font-semibold text-ink">
             {scope.clientName ?? 'Anonymous client'}
           </h1>
           {scope.clientEmail && (
-            <p className="text-sm text-gray-400">{scope.clientEmail}</p>
+            <p className="text-sm text-ink-3">{scope.clientEmail}</p>
           )}
         </div>
         {generated.confidence && (
@@ -207,10 +242,11 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
       </div>
 
       {/* Two-panel layout */}
-      <div className="grid grid-cols-5 gap-6">
-        {/* Left: Scope editor (3/5) */}
-        <div className="col-span-3 space-y-6">
-          {/* Executive Summary */}
+      <div className="grid grid-cols-5 gap-5">
+
+        {/* Left: Scope editor 3/5 */}
+        <div className="col-span-3 space-y-4">
+
           <ScopeSection title="Executive Summary">
             <EditableText
               value={generated.executiveSummary}
@@ -219,42 +255,39 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
             />
           </ScopeSection>
 
-          {/* Deliverables */}
           <ScopeSection title="Deliverables">
             <div className="space-y-2">
               {generated.deliverables.map((d) => (
-                <div key={d.id} className="border border-gray-100 rounded-lg p-3">
-                  <p className="text-sm font-medium text-gray-900">{d.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{d.description}</p>
-                  <span className="text-xs text-gray-400 mt-1 inline-block">{d.phase}</span>
+                <div key={d.id} className="border border-line rounded-lg p-3">
+                  <p className="text-sm font-medium text-ink">{d.title}</p>
+                  <p className="text-xs text-ink-2 mt-0.5">{d.description}</p>
+                  <span className="text-xs text-ink-3 mt-1 inline-block">{d.phase}</span>
                 </div>
               ))}
             </div>
           </ScopeSection>
 
-          {/* Milestones */}
           <ScopeSection title="Milestones">
-            <div className="space-y-2">
+            <div className="space-y-1">
               {generated.milestones
                 .sort((a, b) => a.order - b.order)
                 .map((m) => (
-                  <div key={m.id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-                    <span className="text-xs bg-gray-100 text-gray-600 rounded px-2 py-0.5 font-medium flex-shrink-0">
+                  <div key={m.id} className="flex items-center gap-3 py-2 border-b border-line-faint last:border-0">
+                    <span className="text-xs bg-panel-hover text-ink-2 rounded px-2 py-0.5 font-medium flex-shrink-0 border border-line">
                       {m.duration}
                     </span>
-                    <span className="text-sm text-gray-800">{m.name}</span>
+                    <span className="text-sm text-ink">{m.name}</span>
                   </div>
                 ))}
             </div>
           </ScopeSection>
 
-          {/* Out of Scope */}
           {generated.outOfScope.length > 0 && (
             <ScopeSection title="Out of Scope">
-              <ul className="space-y-1">
+              <ul className="space-y-1.5">
                 {generated.outOfScope.map((item, i) => (
-                  <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                    <span className="text-gray-300 mt-0.5">—</span>
+                  <li key={i} className="text-sm text-ink-2 flex items-start gap-2">
+                    <span className="text-ink-3 mt-0.5 flex-shrink-0">—</span>
                     {item}
                   </li>
                 ))}
@@ -262,18 +295,17 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
             </ScopeSection>
           )}
 
-          {/* Risk Flags */}
           {generated.riskFlags.length > 0 && (
             <ScopeSection title="Risk Flags">
               <div className="space-y-2">
                 {generated.riskFlags.map((r: RiskFlag) => (
-                  <div key={r.id} className="flex items-start gap-2.5 p-3 rounded-lg border border-gray-100">
+                  <div key={r.id} className="flex items-start gap-2.5 p-3 rounded-lg border border-line">
                     <Badge variant={r.severity === 'high' ? 'red' : r.severity === 'medium' ? 'amber' : 'gray'}>
                       {r.severity}
                     </Badge>
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{r.title}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{r.description}</p>
+                      <p className="text-sm font-medium text-ink">{r.title}</p>
+                      <p className="text-xs text-ink-2 mt-0.5">{r.description}</p>
                     </div>
                   </div>
                 ))}
@@ -281,20 +313,19 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
             </ScopeSection>
           )}
 
-          {/* Pricing */}
           <ScopeSection title="Investment Estimate">
             <div className="flex items-center gap-4">
               <div>
-                <p className="text-xs text-gray-500 mb-1">Low</p>
-                <p className="text-lg font-semibold text-gray-900">
+                <p className="text-xs text-ink-3 mb-1">Low</p>
+                <p className="text-lg font-semibold text-ink">
                   {generated.pricingEstimate.currency}
                   {generated.pricingEstimate.low.toLocaleString()}
                 </p>
               </div>
-              <span className="text-gray-300">—</span>
+              <span className="text-ink-3">—</span>
               <div>
-                <p className="text-xs text-gray-500 mb-1">High</p>
-                <p className="text-lg font-semibold text-gray-900">
+                <p className="text-xs text-ink-3 mb-1">High</p>
+                <p className="text-lg font-semibold text-ink">
                   {generated.pricingEstimate.currency}
                   {generated.pricingEstimate.high.toLocaleString()}
                 </p>
@@ -304,20 +335,19 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
               )}
             </div>
             {generated.pricingEstimate.notes && (
-              <p className="text-xs text-gray-500 mt-2">{generated.pricingEstimate.notes}</p>
+              <p className="text-xs text-ink-2 mt-2">{generated.pricingEstimate.notes}</p>
             )}
-            <p className="text-[11px] text-gray-400 mt-3 italic">
-              This is an indicative estimate based on information provided. Final pricing is subject to detailed review.
+            <p className="text-[11px] text-ink-3 mt-3 italic">
+              Indicative estimate based on intake responses. Final pricing subject to detailed review.
             </p>
           </ScopeSection>
 
-          {/* Assumptions */}
           {generated.assumptions.length > 0 && (
             <ScopeSection title="Assumptions">
-              <ul className="space-y-1">
+              <ul className="space-y-1.5">
                 {generated.assumptions.map((a, i) => (
-                  <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                    <span className="text-gray-300 mt-0.5">•</span>
+                  <li key={i} className="text-sm text-ink-2 flex items-start gap-2">
+                    <span className="text-orange flex-shrink-0 mt-0.5">•</span>
                     {a}
                   </li>
                 ))}
@@ -326,23 +356,23 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
           )}
         </div>
 
-        {/* Right: Transcript (2/5) */}
+        {/* Right: Transcript 2/5 */}
         <div className="col-span-2">
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 sticky top-6 max-h-[80vh] overflow-y-auto">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">
+          <div className="bg-panel border border-line rounded-2xl p-4 sticky top-6 max-h-[80vh] overflow-y-auto panel-shadow">
+            <p className="text-[10px] font-semibold text-ink-3 uppercase tracking-widest mb-4">
               Intake Transcript
             </p>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {transcript.map((msg, i) => (
                 <div
                   key={i}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
+                    className={`max-w-[88%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
                       msg.role === 'user'
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-gray-50 text-gray-700 border border-gray-100'
+                        ? 'bg-ink text-canvas'
+                        : 'bg-panel-hover text-ink-2 border border-line'
                     }`}
                   >
                     {msg.content}
@@ -359,8 +389,8 @@ export default function ScopeEditorClient({ scope, agencyName }: Props) {
 
 function ScopeSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5">
-      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">{title}</h3>
+    <div className="bg-panel border border-line rounded-2xl p-5 panel-shadow">
+      <h3 className="text-[10px] font-semibold text-ink-3 uppercase tracking-widest mb-4">{title}</h3>
       {children}
     </div>
   )
@@ -390,7 +420,7 @@ function EditableText({
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={handleBlur}
-        className="w-full text-sm text-gray-800 leading-relaxed border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
+        className="w-full text-sm text-ink leading-relaxed bg-canvas border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange/40 resize-none"
         rows={4}
       />
     ) : (
@@ -400,14 +430,14 @@ function EditableText({
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={handleBlur}
-        className="w-full text-sm text-gray-800 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
+        className="w-full text-sm text-ink bg-canvas border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange/40"
       />
     )
   }
 
   return (
     <p
-      className="text-sm text-gray-800 leading-relaxed cursor-text hover:bg-gray-50 rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors"
+      className="text-sm text-ink leading-relaxed cursor-text hover:bg-panel-hover rounded-lg px-2 py-1 -mx-2 -my-1 transition-colors"
       onClick={() => { setDraft(value); setEditing(true) }}
       title="Click to edit"
     >

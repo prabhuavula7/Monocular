@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth, clerkClient } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { agencies } from '@/lib/db/schema'
@@ -6,12 +6,13 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 const PatchAgencySchema = z.object({
-  tonePreference: z.string().optional(),
-  rateMin: z.number().optional(),
-  rateMax: z.number().optional(),
-  rateCurrency: z.string().optional(),
+  name:                z.string().min(1).max(80).optional(),
+  tonePreference:      z.string().optional(),
+  rateMin:             z.number().optional(),
+  rateMax:             z.number().optional(),
+  rateCurrency:        z.string().optional(),
   standardAssumptions: z.array(z.string()).optional(),
-  customRiskFlags: z.array(z.string()).optional(),
+  customRiskFlags:     z.array(z.string()).optional(),
 })
 
 export async function GET() {
@@ -37,6 +38,17 @@ export async function PATCH(req: NextRequest) {
   const parsed = PatchAgencySchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  }
+
+  // Sync name to Clerk org if provided
+  if (parsed.data.name) {
+    try {
+      const clerk = await clerkClient()
+      await clerk.organizations.updateOrganization(orgId, { name: parsed.data.name })
+    } catch (err) {
+      console.error('[settings] failed to sync name to Clerk', err)
+      // Non-fatal — DB update still proceeds
+    }
   }
 
   const [updated] = await db

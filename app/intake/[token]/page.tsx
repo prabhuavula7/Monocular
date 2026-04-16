@@ -13,10 +13,11 @@ export default async function IntakePage({
 
   const [link] = await db
     .select({
-      id: intakeLinks.id,
-      agencyId: intakeLinks.agencyId,
-      expiresAt: intakeLinks.expiresAt,
-      usedAt: intakeLinks.usedAt,
+      id:           intakeLinks.id,
+      agencyId:     intakeLinks.agencyId,
+      expiresAt:    intakeLinks.expiresAt,
+      usedAt:       intakeLinks.usedAt,
+      isDeprecated: intakeLinks.isDeprecated,
     })
     .from(intakeLinks)
     .where(eq(intakeLinks.token, token))
@@ -24,23 +25,23 @@ export default async function IntakePage({
 
   if (!link) notFound()
 
-  if (link.expiresAt && link.expiresAt < new Date()) {
+  if (link.isDeprecated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-lg font-medium text-gray-700">This intake link has expired.</p>
-          <p className="text-sm text-gray-500 mt-1">Please contact the team for a new link.</p>
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
+        <div className="text-center px-6">
+          <p className="text-base font-medium text-ink">This link is no longer active.</p>
+          <p className="text-sm text-ink-3 mt-1">Please contact the team for an updated link.</p>
         </div>
       </div>
     )
   }
 
-  if (link.usedAt) {
+  if (link.expiresAt && link.expiresAt < new Date()) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-lg font-medium text-gray-700">This intake has already been completed.</p>
-          <p className="text-sm text-gray-500 mt-1">The team will be in touch with your scope.</p>
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
+        <div className="text-center px-6">
+          <p className="text-base font-medium text-ink">This intake link has expired.</p>
+          <p className="text-sm text-ink-3 mt-1">Please contact the team for a new link.</p>
         </div>
       </div>
     )

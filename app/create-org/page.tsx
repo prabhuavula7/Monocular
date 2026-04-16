@@ -8,7 +8,7 @@ export default async function CreateOrgPage() {
   if (orgId) redirect('/dashboard')
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-canvas px-4">
       <div className="mb-8">
         <Image
           src="/monocular_logo_pack/monocular-icon-color.svg"

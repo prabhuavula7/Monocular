@@ -23,22 +23,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid link' }, { status: 404 })
   }
 
+  if (link.isDeprecated) {
+    return NextResponse.json({ error: 'This link has been deactivated' }, { status: 410 })
+  }
+
   if (link.expiresAt && link.expiresAt < new Date()) {
     return NextResponse.json({ error: 'Link expired' }, { status: 410 })
   }
 
-  if (link.usedAt) {
-    return NextResponse.json({ error: 'This intake has already been completed' }, { status: 409 })
-  }
-
-  // Check if session already exists (page reload)
+  // Check if a session already exists for this token
   const [existing] = await db
     .select()
     .from(intakeSessions)
     .where(eq(intakeSessions.token, token))
     .limit(1)
 
-  if (existing && !existing.isComplete) {
+  // If the link was previously completed (usedAt set) and an old session somehow
+  // still exists, clear it so the client gets a fresh conversation.
+  if (existing && link.usedAt) {
+    await db.delete(intakeSessions).where(eq(intakeSessions.token, token))
+  } else if (existing) {
     const messages = existing.messages as Array<{ role: string; content: string; timestamp: string }>
     const opening = messages.find((m) => m.role === 'assistant')
     const [agency] = await db
@@ -46,6 +50,21 @@ export async function POST(req: NextRequest) {
       .from(agencies)
       .where(eq(agencies.id, link.agencyId))
       .limit(1)
+
+    // Session is complete but the client never hit /intake/complete (closed the tab
+    // right after the AI's final message). Resume and let the client UI trigger
+    // completion normally — it will check X-Intake-Complete on the next send,
+    // or the user can just submit. Return isComplete flag so the client can
+    // immediately show the completion screen.
+    if (existing.isComplete) {
+      return NextResponse.json({
+        openingMessage: opening?.content ?? 'Hi! Tell me about the project you have in mind.',
+        agencyName: agency?.name ?? 'the team',
+        messages,
+        alreadyComplete: true,
+      })
+    }
+
     return NextResponse.json({
       openingMessage: opening?.content ?? 'Hi! Tell me about the project you have in mind.',
       agencyName: agency?.name ?? 'the team',

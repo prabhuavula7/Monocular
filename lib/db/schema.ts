@@ -48,7 +48,7 @@ export const projectTypes = pgTable('project_types', {
   createdAt: timestamp('created_at').defaultNow(),
 })
 
-// One-time intake links sent to clients
+// Reusable intake links — no expiry by default; deprecated by agency to stop use
 export const intakeLinks = pgTable('intake_links', {
   id: uuid('id').primaryKey().defaultRandom(),
   agencyId: uuid('agency_id')
@@ -58,8 +58,9 @@ export const intakeLinks = pgTable('intake_links', {
   token: text('token').notNull().unique(),
   clientEmail: text('client_email'),
   clientName: text('client_name'),
-  expiresAt: timestamp('expires_at'),
-  usedAt: timestamp('used_at'),
+  expiresAt: timestamp('expires_at'),          // optional — null = never expires
+  usedAt: timestamp('used_at'),                // last session completed at
+  isDeprecated: boolean('is_deprecated').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow(),
 })
 

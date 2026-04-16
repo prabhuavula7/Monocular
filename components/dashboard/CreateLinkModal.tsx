@@ -5,9 +5,10 @@ import {
   X, Copy, Check, Globe, Palette, ShoppingCart, Smartphone,
   TrendingUp, Share2, Video, Layout, Layers, Megaphone, Briefcase, ChevronLeft,
 } from 'lucide-react'
+import { DEFAULT_PROJECT_TYPES } from '@/lib/defaults'
 
 interface ProjectType {
-  id: string
+  id: string        // empty string = fallback (no DB id)
   name: string
   description?: string | null
 }
@@ -17,44 +18,40 @@ interface Props {
   onClose: () => void
 }
 
-// Map project type name keywords → icon
 function getProjectTypeIcon(name: string) {
   const n = name.toLowerCase()
-  if (n.includes('web')) return Globe
-  if (n.includes('brand')) return Palette
-  if (n.includes('e-commerce') || n.includes('ecommerce') || n.includes('commerce')) return ShoppingCart
-  if (n.includes('mobile') || n.includes('app')) return Smartphone
-  if (n.includes('seo') || n.includes('content')) return TrendingUp
-  if (n.includes('social')) return Share2
-  if (n.includes('video')) return Video
+  if (n.includes('web'))                                              return Globe
+  if (n.includes('brand'))                                           return Palette
+  if (n.includes('e-commerce') || n.includes('commerce'))           return ShoppingCart
+  if (n.includes('mobile') || n.includes('app'))                    return Smartphone
+  if (n.includes('seo') || n.includes('content'))                   return TrendingUp
+  if (n.includes('social'))                                          return Share2
+  if (n.includes('video'))                                           return Video
   if (n.includes('ux') || n.includes('ui') || n.includes('design')) return Layout
-  if (n.includes('saas') || n.includes('product') || n.includes('software')) return Layers
-  if (n.includes('marketing') || n.includes('campaign')) return Megaphone
+  if (n.includes('saas') || n.includes('product'))                  return Layers
+  if (n.includes('marketing') || n.includes('campaign'))            return Megaphone
   return Briefcase
 }
 
-const STATUS_COLORS = [
-  'bg-orange-50 text-orange-600 border-orange-200',
-  'bg-purple-50 text-purple-600 border-purple-200',
-  'bg-blue-50 text-blue-600 border-blue-200',
-  'bg-green-50 text-green-600 border-green-200',
-  'bg-amber-50 text-amber-600 border-amber-200',
-  'bg-rose-50 text-rose-600 border-rose-200',
-  'bg-teal-50 text-teal-600 border-teal-200',
-  'bg-indigo-50 text-indigo-600 border-indigo-200',
-  'bg-pink-50 text-pink-600 border-pink-200',
-  'bg-cyan-50 text-cyan-600 border-cyan-200',
+// Accent colors for cards — cycling, theme-aware
+const CARD_ACCENTS = [
+  'border-orange/30   bg-orange/5   text-orange',
+  'border-purple-400/30 bg-purple-400/5 text-purple-500',
+  'border-blue-400/30   bg-blue-400/5   text-blue-500',
+  'border-green-500/30  bg-green-500/5  text-green-500',
+  'border-amber-400/30  bg-amber-400/5  text-amber-500',
+  'border-rose-400/30   bg-rose-400/5   text-rose-500',
+  'border-teal-400/30   bg-teal-400/5   text-teal-500',
+  'border-indigo-400/30 bg-indigo-400/5 text-indigo-500',
+  'border-pink-400/30   bg-pink-400/5   text-pink-500',
+  'border-cyan-400/30   bg-cyan-400/5   text-cyan-500',
 ]
-
-function getCardColor(index: number) {
-  return STATUS_COLORS[index % STATUS_COLORS.length]
-}
 
 type Step = 'template' | 'details' | 'done'
 
 export function CreateLinkModal({ open, onClose }: Props) {
-  const [projectTypes, setProjectTypes] = useState<ProjectType[]>([])
-  const [projectTypeId, setProjectTypeId] = useState<string | null>(null) // null = general
+  const [dbTypes, setDbTypes] = useState<ProjectType[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [clientName, setClientName] = useState('')
   const [clientEmail, setClientEmail] = useState('')
   const [generatedUrl, setGeneratedUrl] = useState('')
@@ -66,9 +63,16 @@ export function CreateLinkModal({ open, onClose }: Props) {
     if (!open) return
     fetch('/api/settings/project-types')
       .then((r) => r.json())
-      .then((data) => setProjectTypes(Array.isArray(data) ? data : []))
+      .then((data) => setDbTypes(Array.isArray(data) ? data : []))
       .catch(() => {})
   }, [open])
+
+  // Use DB types when available, fall back to built-in defaults (id = '')
+  const templates: ProjectType[] = dbTypes.length > 0
+    ? dbTypes
+    : DEFAULT_PROJECT_TYPES.map((t) => ({ id: '', name: t.name, description: t.description }))
+
+  const usingFallback = dbTypes.length === 0
 
   async function handleCreate() {
     setIsLoading(true)
@@ -77,9 +81,10 @@ export function CreateLinkModal({ open, onClose }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          projectTypeId: projectTypeId ?? undefined,
-          clientName: clientName || undefined,
-          clientEmail: clientEmail || undefined,
+          // only pass a real DB id; fallback templates behave as general
+          projectTypeId: (selectedId && selectedId !== '') ? selectedId : undefined,
+          clientName:    clientName  || undefined,
+          clientEmail:   clientEmail || undefined,
         }),
       })
       const data = await res.json()
@@ -102,82 +107,94 @@ export function CreateLinkModal({ open, onClose }: Props) {
     setGeneratedUrl('')
     setClientName('')
     setClientEmail('')
-    setProjectTypeId(null)
+    setSelectedId(null)
     setStep('template')
     onClose()
   }
 
   if (!open) return null
 
-  const selectedType = projectTypeId
-    ? projectTypes.find((pt) => pt.id === projectTypeId)
+  const selectedType = selectedId !== null
+    ? templates.find((t) => t.id === selectedId) ?? templates.find((t) => t.name === selectedId)
     : null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={handleClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={handleClose} />
+      <div className="relative bg-modal border border-line rounded-2xl modal-shadow w-full max-w-lg mx-4 overflow-hidden">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line">
           <div className="flex items-center gap-2.5">
             {step === 'details' && (
               <button
                 onClick={() => setStep('template')}
-                className="text-gray-400 hover:text-gray-600 mr-1"
+                className="text-ink-3 hover:text-ink-2 mr-1 transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
             )}
-            <h2 className="text-sm font-semibold text-gray-900">
+            <h2 className="text-sm font-semibold text-ink">
               {step === 'template' && 'Choose a template'}
               {step === 'details' && (selectedType ? selectedType.name : 'General intake')}
-              {step === 'done' && 'Link ready'}
+              {step === 'done'    && 'Link ready'}
             </h2>
           </div>
-          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={handleClose} className="text-ink-3 hover:text-ink transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Step: Template selection */}
+        {/* ── Step 1: Template grid ── */}
         {step === 'template' && (
           <div className="p-5">
-            <p className="text-xs text-gray-400 mb-4">
-              Templates tell the AI what questions to ask and how to price the project.
+            <p className="text-xs text-ink-3 mb-4">
+              Templates tell the AI what questions to ask and how to structure the scope.
             </p>
-            <div className="grid grid-cols-2 gap-2.5 max-h-[420px] overflow-y-auto pr-1">
+
+            {usingFallback && (
+              <div className="mb-3 px-3 py-2 bg-orange-dim border border-orange-border rounded-lg">
+                <p className="text-xs text-orange">
+                  Showing built-in templates — link your database to save custom ones.
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto pr-0.5">
               {/* General option */}
               <button
-                onClick={() => { setProjectTypeId(null); setStep('details') }}
-                className="flex items-start gap-3 p-3.5 rounded-xl border border-dashed border-gray-200 hover:border-orange-300 hover:bg-orange-50/50 text-left transition-all group"
+                onClick={() => { setSelectedId(null); setStep('details') }}
+                className="flex items-start gap-3 p-3.5 rounded-xl border border-dashed border-line hover:border-orange/50 hover:bg-orange-dim text-left transition-all group"
               >
-                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 group-hover:bg-orange-100">
-                  <Briefcase className="w-4 h-4 text-gray-500 group-hover:text-orange-600" />
+                <div className="w-8 h-8 rounded-lg bg-panel-hover flex items-center justify-center flex-shrink-0 group-hover:bg-orange-dim">
+                  <Briefcase className="w-4 h-4 text-ink-3 group-hover:text-orange" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">General</p>
-                  <p className="text-xs text-gray-400 mt-0.5 leading-snug">No template — open discovery</p>
+                  <p className="text-sm font-medium text-ink-2 group-hover:text-ink">General</p>
+                  <p className="text-xs text-ink-3 mt-0.5 leading-snug">Open discovery, no template</p>
                 </div>
               </button>
 
-              {/* Project type cards */}
-              {projectTypes.map((pt, i) => {
-                const Icon = getProjectTypeIcon(pt.name)
-                const colorClass = getCardColor(i)
+              {/* Template cards */}
+              {templates.map((pt, i) => {
+                const Icon   = getProjectTypeIcon(pt.name)
+                const accent = CARD_ACCENTS[i % CARD_ACCENTS.length]
+                // accent string is e.g. "border-orange/30 bg-orange/5 text-orange"
+                // split so we can apply icon color separately
+                const [borderCls, bgCls, iconCls] = accent.split(' ')
                 return (
                   <button
-                    key={pt.id}
-                    onClick={() => { setProjectTypeId(pt.id); setStep('details') }}
-                    className={`flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all hover:shadow-sm hover:scale-[1.01] ${colorClass} bg-opacity-30`}
+                    key={pt.id || pt.name}
+                    onClick={() => { setSelectedId(pt.id || pt.name); setStep('details') }}
+                    className={`flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all hover:scale-[1.01] hover:shadow-sm ${borderCls} ${bgCls}`}
                   >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-white/70`}>
-                      <Icon className="w-4 h-4" />
+                    <div className="w-8 h-8 rounded-lg bg-panel/60 flex items-center justify-center flex-shrink-0">
+                      <Icon className={`w-4 h-4 ${iconCls}`} />
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">{pt.name}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-ink">{pt.name}</p>
                       {pt.description && (
-                        <p className="text-xs opacity-70 mt-0.5 leading-snug line-clamp-2">{pt.description}</p>
+                        <p className="text-xs text-ink-3 mt-0.5 leading-snug line-clamp-2">{pt.description}</p>
                       )}
                     </div>
                   </button>
@@ -187,72 +204,74 @@ export function CreateLinkModal({ open, onClose }: Props) {
           </div>
         )}
 
-        {/* Step: Client details */}
+        {/* ── Step 2: Client details ── */}
         {step === 'details' && (
           <div className="p-6 space-y-4">
             {selectedType && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg mb-2">
+              <div className="flex items-center gap-2 px-3 py-2 bg-panel-hover border border-line rounded-lg">
                 {(() => {
                   const Icon = getProjectTypeIcon(selectedType.name)
-                  return <Icon className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                  return <Icon className="w-3.5 h-3.5 text-ink-3 flex-shrink-0" />
                 })()}
-                <span className="text-xs text-gray-500">{selectedType.name} template selected</span>
+                <span className="text-xs text-ink-2">{selectedType.name} template selected</span>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                Client Name <span className="text-gray-400 font-normal">(optional)</span>
+              <label className="block text-xs font-medium text-ink-2 mb-1.5">
+                Client Name <span className="text-ink-3 font-normal">(optional)</span>
               </label>
               <input
                 type="text"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
                 placeholder="Acme Corp"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 transition-shadow"
+                className="w-full rounded-lg border border-line bg-panel px-3 py-2.5 text-sm text-ink placeholder-ink-3 focus:outline-none focus:ring-2 focus:ring-orange/30 focus:border-orange/50 transition-shadow"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                Client Email <span className="text-gray-400 font-normal">(optional)</span>
+              <label className="block text-xs font-medium text-ink-2 mb-1.5">
+                Client Email <span className="text-ink-3 font-normal">(optional)</span>
               </label>
               <input
                 type="email"
                 value={clientEmail}
                 onChange={(e) => setClientEmail(e.target.value)}
                 placeholder="contact@acme.com"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 transition-shadow"
+                className="w-full rounded-lg border border-line bg-panel px-3 py-2.5 text-sm text-ink placeholder-ink-3 focus:outline-none focus:ring-2 focus:ring-orange/30 focus:border-orange/50 transition-shadow"
               />
             </div>
 
             <button
               onClick={handleCreate}
               disabled={isLoading}
-              className="w-full bg-orange-500 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-orange-600 disabled:opacity-50 transition-colors mt-2"
+              className="w-full bg-orange text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-orange-hover disabled:opacity-50 transition-colors mt-1"
             >
-              {isLoading ? 'Creating link...' : 'Create Intake Link'}
+              {isLoading ? 'Creating...' : 'Create Intake Link'}
             </button>
           </div>
         )}
 
-        {/* Step: Done — show link */}
+        {/* ── Step 3: Link ready ── */}
         {step === 'done' && (
           <div className="p-6 space-y-4">
-            <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3">
-              <p className="text-sm font-medium text-green-800">Link created</p>
-              <p className="text-xs text-green-600 mt-0.5">Share this with your client. It expires in 7 days.</p>
+            <div className="bg-green-500/10 border border-green-500/25 rounded-xl px-4 py-3">
+              <p className="text-sm font-medium text-green-600 dark:text-green-400">Link created</p>
+              <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-0.5">
+                Share this with your client. It expires in 7 days.
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 readOnly
                 value={generatedUrl}
-                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-600 bg-gray-50 focus:outline-none"
+                className="flex-1 rounded-lg border border-line bg-canvas px-3 py-2 text-xs text-ink-2 focus:outline-none"
               />
               <button
                 onClick={handleCopy}
-                className="flex-shrink-0 flex items-center gap-1.5 bg-orange-500 text-white rounded-lg px-3 py-2 text-xs font-medium hover:bg-orange-600 transition-colors"
+                className="flex-shrink-0 flex items-center gap-1.5 bg-orange text-white rounded-lg px-3 py-2 text-xs font-medium hover:bg-orange-hover transition-colors"
               >
                 {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 {copied ? 'Copied' : 'Copy'}
@@ -260,7 +279,7 @@ export function CreateLinkModal({ open, onClose }: Props) {
             </div>
             <button
               onClick={handleClose}
-              className="w-full border border-gray-200 text-gray-700 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors"
+              className="w-full border border-line text-ink-2 rounded-lg py-2.5 text-sm font-medium hover:bg-panel-hover transition-colors"
             >
               Done
             </button>

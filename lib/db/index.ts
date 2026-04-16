@@ -12,7 +12,12 @@ function getDb() {
   if (!_db) {
     const connectionString = process.env.DATABASE_URL ?? process.env.POSTGRES_URL
     if (!connectionString) throw new Error('DATABASE_URL or POSTGRES_URL is required')
-    const client = postgres(connectionString, { prepare: false })
+    const client = postgres(connectionString, {
+      prepare: false,
+      max: 3,                    // cap pool size — prevents exhausting Supabase free-tier slots
+      idle_timeout: 20,          // release idle connections after 20s
+      connect_timeout: 10,
+    })
     _db = drizzle(client, { schema })
   }
   return _db

@@ -1,8 +1,10 @@
+import { after } from 'next/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { intakeLinks, intakeSessions, scopes } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { inngest } from '@/inngest/client'
+import { runGenerateScope } from '@/lib/run-generate-scope'
 import type { Message } from '@/types'
 
 export async function POST(req: NextRequest) {
@@ -66,11 +68,21 @@ export async function POST(req: NextRequest) {
   // Delete session
   await db.delete(intakeSessions).where(eq(intakeSessions.token, token))
 
-  // Fire Inngest event — scope generation runs in background
-  await inngest.send({
-    name: 'scope/generate',
-    data: { scopeId: scope.id },
+  // Schedule generation to run after response is sent.
+  // after() is used so the client gets scopeId immediately without waiting for Claude.
+  // Inngest is also fired as a backup if cloud keys are configured.
+  after(async () => {
+    try {
+      await runGenerateScope(scope.id)
+    } catch (err) {
+      console.error('[generate-scope] inline generation failed', err)
+    }
   })
+
+  // Fire Inngest event if keys are present (production) — safe to fail silently in dev.
+  if (process.env.INNGEST_EVENT_KEY) {
+    inngest.send({ name: 'scope/generate', data: { scopeId: scope.id } }).catch(() => {})
+  }
 
   return NextResponse.json({ scopeId: scope.id })
 }
