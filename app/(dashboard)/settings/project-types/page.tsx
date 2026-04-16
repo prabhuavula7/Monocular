@@ -41,7 +41,7 @@ export default function ProjectTypesPage() {
   return (
     <div className="max-w-2xl mx-auto px-6 py-8">
       <div className="flex items-center gap-3 mb-8">
-        <Link href="/dashboard/settings" className="text-gray-400 hover:text-gray-600">
+        <Link href="/settings" className="text-gray-400 hover:text-gray-600">
           <ChevronLeft className="w-4 h-4" />
         </Link>
         <h1 className="text-xl font-semibold text-gray-900">Project Types</h1>
@@ -81,7 +81,7 @@ export default function ProjectTypesPage() {
                   {pt.isActive ? 'Deactivate' : 'Activate'}
                 </button>
                 <Link
-                  href={`/dashboard/settings/project-types/${pt.id}`}
+                  href={`/settings/project-types/${pt.id}`}
                   className="text-xs text-gray-500 hover:text-gray-700"
                 >
                   Edit
@@ -99,7 +99,7 @@ export default function ProjectTypesPage() {
       </div>
 
       <Link
-        href="/dashboard/settings/project-types/new"
+        href="/settings/project-types/new"
         className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 border border-dashed border-gray-200 rounded-xl px-5 py-3 hover:border-gray-300 transition-colors"
       >
         <Plus className="w-4 h-4" />
