@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Link2, FileText,
   Settings, User, ChevronLeft, ChevronRight,
 } from 'lucide-react'
-import { UserButton } from '@clerk/nextjs'
+import { useUser } from '@clerk/nextjs'
 import { ThemeSegment, ThemeToggle } from '@/components/ThemeToggle'
 
 interface Props {
@@ -22,13 +22,13 @@ const NAV_PRIMARY = [
 ]
 
 const NAV_SECONDARY = [
-  { href: '/account',  icon: User,     label: 'Account'  },
   { href: '/settings', icon: Settings, label: 'Settings' },
 ]
 
 export function Sidebar({ agencyName }: Props) {
   const [collapsed, setCollapsed] = useState(false)
   const pathname = usePathname()
+  const { user } = useUser()
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-collapsed')
@@ -112,11 +112,36 @@ export function Sidebar({ agencyName }: Props) {
         {collapsed ? <ThemeToggle /> : <ThemeSegment className="w-full justify-center" />}
       </div>
 
-      {/* Clerk user button — for sign-out and profile */}
-      <div className={`border-t border-sidebar-line flex items-center gap-2.5 py-3 ${collapsed ? 'justify-center px-0' : 'px-4'}`}>
-        <UserButton />
-        {!collapsed && <span className="text-xs text-ink-3 truncate">Signed in</span>}
-      </div>
+      {/* User card — links to /account */}
+      <Link
+        href="/account"
+        title={collapsed ? 'Account' : undefined}
+        className={`border-t border-sidebar-line flex items-center gap-2.5 py-3 transition-colors hover:bg-panel-hover group ${collapsed ? 'justify-center px-0' : 'px-4'}`}
+      >
+        {user?.imageUrl ? (
+          <Image
+            src={user.imageUrl}
+            alt={user.fullName ?? 'User'}
+            width={28}
+            height={28}
+            className="w-7 h-7 rounded-full flex-shrink-0 ring-1 ring-line"
+          />
+        ) : (
+          <div className="w-7 h-7 rounded-full bg-orange-dim border border-orange-border flex items-center justify-center flex-shrink-0">
+            <User className="w-3.5 h-3.5 text-orange" />
+          </div>
+        )}
+        {!collapsed && (
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-ink truncate leading-tight">
+              {user?.fullName ?? user?.firstName ?? 'Account'}
+            </p>
+            <p className="text-[11px] text-ink-3 truncate leading-tight">
+              {user?.primaryEmailAddress?.emailAddress ?? ''}
+            </p>
+          </div>
+        )}
+      </Link>
     </aside>
   )
 }

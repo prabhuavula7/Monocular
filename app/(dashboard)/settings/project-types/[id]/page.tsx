@@ -53,7 +53,7 @@ export default function ProjectTypeEditorPage({
         const pt = data.find((p) => p.id === id)
         if (pt) {
           setForm({
-            name: pt.name,
+            name: pt.name ?? '',
             description: pt.description ?? '',
             milestonePattern: pt.milestonePattern ?? [],
             extractionSchema: pt.extractionSchema ?? [],
@@ -81,7 +81,7 @@ export default function ProjectTypeEditorPage({
           body: JSON.stringify(form),
         })
       }
-      router.push('/dashboard/settings/project-types')
+      router.push('/settings/project-types')
     } catch {
       alert('Failed to save')
     } finally {
@@ -129,7 +129,7 @@ export default function ProjectTypeEditorPage({
   return (
     <div className="max-w-2xl mx-auto px-6 py-8">
       <div className="flex items-center gap-3 mb-8">
-        <Link href="/dashboard/settings/project-types" className="text-gray-400 hover:text-gray-600">
+        <Link href="/settings/project-types" className="text-ink-3 hover:text-ink">
           <ChevronLeft className="w-4 h-4" />
         </Link>
         <h1 className="text-xl font-semibold text-gray-900">

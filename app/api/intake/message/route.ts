@@ -33,7 +33,8 @@ export async function POST(req: NextRequest) {
     return new Response('Session expired', { status: 410 })
   }
 
-  if (session.isComplete) {
+  // Block only if fully completed — awaiting_confirmation still allows messages
+  if (session.status === 'completed' || (session.isComplete && session.status !== 'awaiting_confirmation')) {
     return new Response('Intake already completed', { status: 400 })
   }
 
@@ -110,7 +111,7 @@ export async function POST(req: NextRequest) {
         }
 
         const COMPLETION_SIGNAL = 'I think I have everything I need'
-        isComplete = fullResponse.includes(COMPLETION_SIGNAL)
+        const readyToComplete = fullResponse.includes(COMPLETION_SIGNAL)
 
         messages.push({
           role: 'assistant',
@@ -118,13 +119,24 @@ export async function POST(req: NextRequest) {
           timestamp: new Date().toISOString(),
         })
 
-        // TODO (V1.1): run lightweight extraction here and update extractedData per turn
+        // Determine new session status:
+        // - If client was in awaiting_confirmation and sent a new message → they chose to continue → reset to active
+        // - If Claude just signaled readiness → set to awaiting_confirmation
+        // - Otherwise keep current status
+        let newStatus = session.status ?? 'active'
+        if (session.status === 'awaiting_confirmation') {
+          newStatus = 'active' // client continued chatting → dismiss the completion prompt
+        } else if (readyToComplete) {
+          newStatus = 'awaiting_confirmation'
+        }
+
+        isComplete = readyToComplete
 
         await db
           .update(intakeSessions)
           .set({
             messages,
-            isComplete,
+            status: newStatus,
             messageCount: (session.messageCount ?? 0) + 1,
             updatedAt: new Date(),
           })
@@ -141,7 +153,9 @@ export async function POST(req: NextRequest) {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
       'Transfer-Encoding': 'chunked',
-      'X-Intake-Complete': isComplete ? 'true' : 'false',
+      // Signal the client that Claude has enough info and the client should decide next steps.
+      // This does NOT auto-complete the intake — the client must explicitly choose Complete.
+      'X-Intake-Ready-To-Complete': isComplete ? 'true' : 'false',
     },
   })
 }

@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle, Building2, Sliders, Users, Lock } from 'lucide-react'
+import Image from 'next/image'
+import { CheckCircle, Building2, Sliders, Users, Lock, LogOut, User } from 'lucide-react'
+import { useUser, useClerk } from '@clerk/nextjs'
 
 interface OrgSettings {
   name: string
@@ -41,6 +43,8 @@ function Section({ icon: Icon, title, description, children }: {
 
 export default function AccountPage() {
   const router = useRouter()
+  const { user } = useUser()
+  const { signOut, openUserProfile } = useClerk()
   const [settings, setSettings] = useState<OrgSettings | null>(null)
   const [orgName, setOrgName] = useState('')
   const [tone, setTone] = useState('professional')
@@ -127,7 +131,51 @@ export default function AccountPage() {
 
       <div className="mb-2">
         <h1 className="text-xl font-semibold text-ink">Account</h1>
-        <p className="text-sm text-ink-3 mt-0.5">Manage your org profile and AI preferences</p>
+        <p className="text-sm text-ink-3 mt-0.5">Manage your profile, org settings, and AI preferences</p>
+      </div>
+
+      {/* Personal profile */}
+      <div className="bg-panel border border-line rounded-2xl panel-shadow overflow-hidden">
+        <div className="px-6 py-5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            {user?.imageUrl ? (
+              <Image
+                src={user.imageUrl}
+                alt={user.fullName ?? 'User'}
+                width={52}
+                height={52}
+                className="w-13 h-13 rounded-full ring-2 ring-line flex-shrink-0"
+              />
+            ) : (
+              <div className="w-13 h-13 rounded-full bg-orange-dim border border-orange-border flex items-center justify-center flex-shrink-0">
+                <User className="w-6 h-6 text-orange" />
+              </div>
+            )}
+            <div>
+              <p className="text-sm font-semibold text-ink">
+                {user?.fullName ?? user?.firstName ?? '—'}
+              </p>
+              <p className="text-xs text-ink-3 mt-0.5">
+                {user?.primaryEmailAddress?.emailAddress ?? ''}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => openUserProfile()}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-line text-xs font-medium text-ink-2 hover:bg-panel-hover transition-colors"
+            >
+              Edit profile
+            </button>
+            <button
+              onClick={() => signOut({ redirectUrl: '/sign-in' })}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-line text-xs font-medium text-ink-3 hover:text-red-500 hover:border-red-500/30 hover:bg-red-500/5 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign out
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Org identity */}

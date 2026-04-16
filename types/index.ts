@@ -81,6 +81,33 @@ export interface RiskFlag {
   description: string
 }
 
+// Rich context attached to an intake link — injected into Claude's system prompt
+export interface IntakeLinkContext {
+  label?: string | null
+  clientCompany?: string | null
+  clientWebsite?: string | null
+  clientIndustry?: string | null
+  primaryObjective?: string | null
+  successDefinition?: string | null
+  budgetContext?: string | null
+  timelineContext?: string | null
+  stakeholderContext?: string | null
+  technicalContext?: string | null
+  mustCapture?: string | null
+  excludedTopics?: string | null
+  agencyInstructions?: string | null
+  engagementType?: 'general' | 'template'
+}
+
+// Summary of one completed intake iteration — used to build iterative memory
+export interface IterativeMemory {
+  iterationNumber: number
+  conversationSummary: string
+  scopeSummary: string | null
+  changeLog: string | null
+  openQuestions: string[] | null
+}
+
 // Agency config (used in prompt composer)
 export interface AgencyConfig {
   id: string

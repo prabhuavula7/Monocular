@@ -8,12 +8,20 @@ import { formatRelativeTime } from '@/lib/utils'
 
 interface Scope {
   id: string
+  name: string | null
   clientName: string | null
   clientEmail: string | null
   status: 'draft' | 'in_review' | 'sent' | 'won' | 'lost'
   createdAt: string
   generatedScope: { executiveSummary?: string } | null
   projectTypeName: string | null
+  intakeLinkId: string | null
+}
+
+interface ScopeGroup {
+  key: string
+  latest: Scope
+  history: Scope[]  // older versions, asc by date
 }
 
 const STATUS_ACCENT: Record<string, string> = {
@@ -32,6 +40,34 @@ const STATUS_FILTERS = [
   { key: 'won',       label: 'Won'       },
   { key: 'lost',      label: 'Lost'      },
 ] as const
+
+function groupScopes(scopes: Scope[]): ScopeGroup[] {
+  const map = new Map<string, Scope[]>()
+
+  for (const scope of scopes) {
+    // Scopes without a link are their own group
+    const key = scope.intakeLinkId ?? `solo:${scope.id}`
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(scope)
+  }
+
+  const groups: ScopeGroup[] = []
+  for (const [key, members] of map.entries()) {
+    const sorted = [...members].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    )
+    groups.push({
+      key,
+      latest: sorted[sorted.length - 1],
+      history: sorted.slice(0, -1),
+    })
+  }
+
+  // Sort groups by their latest scope's createdAt descending
+  return groups.sort(
+    (a, b) => new Date(b.latest.createdAt).getTime() - new Date(a.latest.createdAt).getTime()
+  )
+}
 
 export default function ScopesPage() {
   const [scopes, setScopes] = useState<Scope[]>([])
@@ -63,14 +99,20 @@ export default function ScopesPage() {
     won:      scopes.filter(s => s.status === 'won').length,
   }
 
+  const matchesSearch = (s: Scope) =>
+    !search ||
+    s.name?.toLowerCase().includes(search.toLowerCase()) ||
+    s.clientName?.toLowerCase().includes(search.toLowerCase()) ||
+    s.clientEmail?.toLowerCase().includes(search.toLowerCase()) ||
+    s.projectTypeName?.toLowerCase().includes(search.toLowerCase())
+
+  // Filter individual scopes first, then group
   const filtered = scopes.filter(s => {
-    const matchesStatus = statusFilter === 'all' || s.status === statusFilter
-    const matchesSearch = !search ||
-      s.clientName?.toLowerCase().includes(search.toLowerCase()) ||
-      s.clientEmail?.toLowerCase().includes(search.toLowerCase()) ||
-      s.projectTypeName?.toLowerCase().includes(search.toLowerCase())
-    return matchesStatus && matchesSearch
+    const matchStatus = statusFilter === 'all' || s.status === statusFilter
+    return matchStatus && matchesSearch(s)
   })
+
+  const groups = groupScopes(filtered)
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8">
@@ -146,7 +188,7 @@ export default function ScopesPage() {
             </div>
           ))}
         </div>
-      ) : filtered.length === 0 && scopes.length === 0 ? (
+      ) : groups.length === 0 && scopes.length === 0 ? (
         <div className="text-center py-24 bg-panel border border-line rounded-2xl panel-shadow">
           <div className="w-12 h-12 bg-orange-dim border border-orange-border rounded-2xl flex items-center justify-center mx-auto mb-4">
             <TrendingUp className="w-6 h-6 text-orange" />
@@ -162,43 +204,64 @@ export default function ScopesPage() {
             Go to Intake Links
           </Link>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : groups.length === 0 ? (
         <div className="text-center py-16 bg-panel border border-line rounded-2xl">
           <p className="text-sm text-ink-3">No scopes match this filter.</p>
-          <button onClick={() => { setStatusFilter('all'); setSearch('') }} className="mt-2 text-xs text-orange hover:underline">
+          <button
+            onClick={() => { setStatusFilter('all'); setSearch('') }}
+            className="mt-2 text-xs text-orange hover:underline"
+          >
             Clear filters
           </button>
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map(scope => (
-            <Link
-              key={scope.id}
-              href={`/scopes/${scope.id}`}
-              className={`flex items-center justify-between bg-panel border border-l-4 border-line rounded-xl px-5 py-4 hover:bg-panel-hover transition-colors panel-shadow ${STATUS_ACCENT[scope.status]}`}
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-0.5">
+          {groups.map(({ key, latest, history }) => (
+            <div key={key} className={`bg-panel border border-l-4 border-line rounded-xl panel-shadow overflow-hidden ${STATUS_ACCENT[latest.status]}`}>
+
+              {/* Latest version — main row */}
+              <Link
+                href={`/scopes/${latest.id}`}
+                className="flex items-center justify-between px-5 py-4 hover:bg-panel-hover transition-colors"
+              >
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-ink truncate">
-                    {scope.clientName ?? 'Anonymous client'}
+                    {latest.name ?? latest.clientName ?? 'Untitled scope'}
                   </p>
-                  {scope.projectTypeName && (
-                    <span className="text-[10px] bg-panel-hover border border-line text-ink-3 px-2 py-0.5 rounded-full">
-                      {scope.projectTypeName}
-                    </span>
+                  {latest.generatedScope?.executiveSummary ? (
+                    <p className="text-xs text-ink-3 truncate max-w-lg mt-0.5">
+                      {latest.generatedScope.executiveSummary}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-ink-3 italic mt-0.5">Generating scope…</p>
                   )}
                 </div>
-                {scope.generatedScope?.executiveSummary ? (
-                  <p className="text-xs text-ink-3 truncate max-w-lg">{scope.generatedScope.executiveSummary}</p>
-                ) : (
-                  <p className="text-xs text-ink-3 italic">Generating scope...</p>
-                )}
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-                <ScopeStatusBadge status={scope.status} />
-                <span className="text-xs text-ink-3 hidden sm:block">{formatRelativeTime(scope.createdAt)}</span>
-              </div>
-            </Link>
+                <div className="flex items-center gap-3 flex-shrink-0 ml-4">
+                  <ScopeStatusBadge status={latest.status} />
+                  <span className="text-xs text-ink-3 hidden sm:block">{formatRelativeTime(latest.createdAt)}</span>
+                </div>
+              </Link>
+
+              {/* Previous versions strip */}
+              {history.length > 0 && (
+                <div className="flex items-center gap-2 px-5 py-2 border-t border-line bg-canvas">
+                  <span className="text-[10px] text-ink-3 uppercase tracking-wide flex-shrink-0">Earlier</span>
+                  {history.map((v, i) => (
+                    <Link
+                      key={v.id}
+                      href={`/scopes/${v.id}`}
+                      className="flex items-center gap-1.5 text-[11px] text-ink-3 hover:text-ink transition-colors"
+                    >
+                      <span className="font-medium">v{i + 1}</span>
+                      <ScopeStatusBadge status={v.status} />
+                      <span className="text-ink-3">{formatRelativeTime(v.createdAt)}</span>
+                      {i < history.length - 1 && <span className="text-line ml-1">·</span>}
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+            </div>
           ))}
         </div>
       )}

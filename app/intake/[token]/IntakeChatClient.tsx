@@ -138,8 +138,10 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
   const [isLoading, setIsLoading] = useState(false)
   const [isStarted, setIsStarted] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
+  const [readyToComplete, setReadyToComplete] = useState(false)  // Claude has enough info — show decision card
   const [streamText, setStreamText] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [completingIntake, setCompletingIntake] = useState(false)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -153,6 +155,7 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
   }, [messages, streamText, isLoading])
 
   const handleComplete = useCallback(async () => {
+    setCompletingIntake(true)
     try {
       await fetch('/api/intake/complete', {
         method: 'POST',
@@ -160,10 +163,28 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
         body: JSON.stringify({ token }),
       })
     } catch {
-      // Non-blocking
+      // Non-blocking — the scope is still created server-side
     }
     setIsComplete(true)
+    setReadyToComplete(false)
+    setCompletingIntake(false)
   }, [token])
+
+  const handleContinue = useCallback(() => {
+    // Client chose to keep chatting — dismiss the decision card
+    setReadyToComplete(false)
+  }, [])
+
+  const handleModify = useCallback(() => {
+    // Client wants to clarify — inject a local assistant prompt and re-enable input
+    setReadyToComplete(false)
+    const modifyPrompt: Message = {
+      role: 'assistant',
+      content: 'Got it — what would you like to change or clarify?',
+      timestamp: new Date().toISOString(),
+    }
+    setMessages((prev) => [...prev, modifyPrompt])
+  }, [])
 
   useEffect(() => {
     async function start() {
@@ -177,9 +198,9 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
         const data = await res.json()
         setMessages(data.messages ?? [{ role: 'assistant', content: data.openingMessage, timestamp: new Date().toISOString() }])
         setIsStarted(true)
-        // Session was already complete when the client rejoined — trigger completion
-        if (data.alreadyComplete) {
-          await handleComplete()
+        // Session was in awaiting_confirmation when client rejoined — restore decision card
+        if (data.readyToComplete) {
+          setReadyToComplete(true)
         }
       } catch {
         setError('Failed to start intake. Please refresh the page.')
@@ -190,7 +211,7 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
 
   const sendMessage = useCallback(async () => {
     const text = inputValue.trim()
-    if (!text || isLoading || isComplete) return
+    if (!text || isLoading || isComplete || readyToComplete) return
 
     const userMsg: Message = { role: 'user', content: text, timestamp: new Date().toISOString() }
     setMessages((prev) => [...prev, userMsg])
@@ -208,7 +229,7 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
 
       if (!res.ok || !res.body) throw new Error('Failed to get response')
 
-      const intakeComplete = res.headers.get('X-Intake-Complete') === 'true'
+      const intakeReadyToComplete = res.headers.get('X-Intake-Ready-To-Complete') === 'true'
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let full = ''
@@ -222,7 +243,7 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
 
       setMessages((prev) => [...prev, { role: 'assistant', content: full, timestamp: new Date().toISOString() }])
       setStreamText('')
-      if (intakeComplete) await handleComplete()
+      if (intakeReadyToComplete) setReadyToComplete(true)
     } catch {
       setError('Something went wrong. Please try again.')
       setMessages((prev) => prev.filter((m) => m !== userMsg))
@@ -262,6 +283,9 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
           <h1 className="text-xl font-semibold text-ink mb-2">Thanks — we&apos;re on it.</h1>
           <p className="text-ink-2 text-sm leading-relaxed">
             Your responses have been sent to {agencyName}. The team will review and follow up with a detailed proposal.
+          </p>
+          <p className="text-ink-3 text-xs leading-relaxed mt-3">
+            If anything changes or you want to refine the scope, you can reopen this link at any time.
           </p>
         </div>
       </div>
@@ -325,7 +349,50 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
           )}
 
           {error && (
-            <p className="text-center text-xs text-red-500">{error}</p>
+            <div className="flex items-center gap-2 justify-center">
+              <p className="text-xs text-red-500">{error}</p>
+              <button
+                onClick={() => { setError(null); setInputValue(inputValue) }}
+                className="text-xs text-orange underline"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* Decision card — shown when Claude signals it has enough info */}
+          {readyToComplete && !isLoading && (
+            <div className="mx-auto max-w-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="bg-panel border border-orange/30 rounded-2xl p-4 panel-shadow">
+                <p className="text-sm font-medium text-ink mb-1">Ready to wrap up?</p>
+                <p className="text-xs text-ink-3 mb-4 leading-relaxed">
+                  The team has what they need. You can complete the intake, ask for changes, or keep going.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={handleComplete}
+                    disabled={completingIntake}
+                    className="w-full bg-orange text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-orange-hover disabled:opacity-50 transition-colors"
+                  >
+                    {completingIntake ? 'Submitting...' : 'Complete intake'}
+                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleModify}
+                      className="flex-1 border border-line text-ink-2 rounded-xl py-2 text-xs font-medium hover:bg-panel-hover transition-colors"
+                    >
+                      Modify / clarify
+                    </button>
+                    <button
+                      onClick={handleContinue}
+                      className="flex-1 border border-line text-ink-2 rounded-xl py-2 text-xs font-medium hover:bg-panel-hover transition-colors"
+                    >
+                      Keep going
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           <div ref={bottomRef} />
@@ -341,15 +408,15 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type your message..."
-              disabled={isLoading || !isStarted}
+              placeholder={readyToComplete ? 'Choose an option above or keep typing...' : 'Type your message...'}
+              disabled={isLoading || !isStarted || readyToComplete}
               rows={1}
               className="flex-1 resize-none rounded-xl border border-line bg-canvas text-ink placeholder-ink-3 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange/30 focus:border-orange/50 disabled:opacity-50 disabled:cursor-not-allowed max-h-32 overflow-y-auto transition-shadow"
               style={{ minHeight: '44px' }}
             />
             <button
               onClick={sendMessage}
-              disabled={isLoading || !inputValue.trim() || !isStarted}
+              disabled={isLoading || !inputValue.trim() || !isStarted || readyToComplete}
               className="flex-shrink-0 w-10 h-10 bg-orange text-white rounded-xl flex items-center justify-center hover:bg-orange-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

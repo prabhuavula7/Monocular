@@ -56,8 +56,27 @@ export const intakeLinks = pgTable('intake_links', {
     .references(() => agencies.id),
   projectTypeId: uuid('project_type_id').references(() => projectTypes.id),
   token: text('token').notNull().unique(),
+  // Client identity
+  label: text('label'),                        // internal label for the agency
   clientEmail: text('client_email'),
   clientName: text('client_name'),
+  clientCompany: text('client_company'),
+  clientWebsite: text('client_website'),
+  clientIndustry: text('client_industry'),
+  // Prompt context fields — injected into Claude's system prompt
+  primaryObjective: text('primary_objective'),
+  successDefinition: text('success_definition'),
+  budgetContext: text('budget_context'),
+  timelineContext: text('timeline_context'),
+  stakeholderContext: text('stakeholder_context'),
+  technicalContext: text('technical_context'),
+  mustCapture: text('must_capture'),           // things Claude must make sure to cover
+  excludedTopics: text('excluded_topics'),     // topics deliberately out of scope
+  agencyInstructions: text('agency_instructions'), // internal steering notes (not shown to client)
+  engagementType: text('engagement_type').default('general'), // 'general' | 'template'
+  // Iteration tracking
+  iterationCount: integer('iteration_count').default(0),
+  latestScopeId: text('latest_scope_id'),      // uuid stored as text to avoid circular FK
   expiresAt: timestamp('expires_at'),          // optional — null = never expires
   usedAt: timestamp('used_at'),                // last session completed at
   isDeprecated: boolean('is_deprecated').notNull().default(false),
@@ -76,9 +95,32 @@ export const intakeSessions = pgTable('intake_sessions', {
   extractedData: jsonb('extracted_data').notNull().default({}),
   isComplete: boolean('is_complete').default(false),
   messageCount: integer('message_count').default(0),
+  // Iteration support
+  status: text('status').default('active'),    // 'active' | 'awaiting_confirmation' | 'completed'
+  iterationNumber: integer('iteration_number').default(1),
+  parentScopeId: text('parent_scope_id'),      // most recent prior scope (uuid as text)
+  priorIterationSummary: text('prior_iteration_summary'), // compact memory injected into prompt
+  completionSummary: text('completion_summary'), // summary generated when this round completes
+  clientDecision: text('client_decision'),     // 'continue' | 'modify' | 'complete'
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+// History of completed intake iterations per link — drives iterative memory
+export const intakeIterations = pgTable('intake_iterations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  intakeLinkId: uuid('intake_link_id')
+    .notNull()
+    .references(() => intakeLinks.id, { onDelete: 'cascade' }),
+  scopeId: uuid('scope_id'),                   // scope generated for this iteration
+  sessionToken: text('session_token'),          // token of the session that produced this (for idempotency)
+  iterationNumber: integer('iteration_number').notNull(),
+  conversationSummary: text('conversation_summary').notNull(),
+  scopeSummary: text('scope_summary'),         // brief summary of the generated scope
+  changeLog: text('change_log'),               // what changed vs prior iteration
+  openQuestions: text('open_questions').array(),
+  createdAt: timestamp('created_at').defaultNow(),
 })
 
 // Completed scopes
@@ -90,6 +132,7 @@ export const scopes = pgTable('scopes', {
   intakeLinkId: uuid('intake_link_id').references(() => intakeLinks.id),
   projectTypeId: uuid('project_type_id').references(() => projectTypes.id),
   status: scopeStatusEnum('status').default('draft'),
+  name: text('name'),                                                          // computed display name e.g. "Acme Corp — Website v1"
   clientName: text('client_name'),
   clientEmail: text('client_email'),
   transcript: jsonb('transcript').notNull().default([]),  // Message[]

@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect, notFound } from 'next/navigation'
 import { db } from '@/lib/db'
 import { agencies, scopes } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import ScopeEditorClient from './ScopeEditorClient'
 import type { Message, GeneratedScope } from '@/types'
 
@@ -32,6 +32,16 @@ export default async function ScopePage({
 
   if (!scope || scope.agencyId !== agency.id) notFound()
 
+  // Fetch sibling versions from the same intake link (for version history strip)
+  const versions =
+    scope.intakeLinkId
+      ? await db
+          .select({ id: scopes.id, name: scopes.name, createdAt: scopes.createdAt, status: scopes.status })
+          .from(scopes)
+          .where(eq(scopes.intakeLinkId, scope.intakeLinkId))
+          .orderBy(asc(scopes.createdAt))
+      : []
+
   return (
     <ScopeEditorClient
       scope={{
@@ -41,6 +51,7 @@ export default async function ScopePage({
         generatedScope: scope.generatedScope as GeneratedScope | null,
       }}
       agencyName={agency.name}
+      versions={versions}
     />
   )
 }

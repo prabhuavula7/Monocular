@@ -17,7 +17,7 @@ Monocular is a multi-tenant SaaS for digital agencies. Agencies create intake li
 | File storage | Supabase Storage | Bucket: `scope-pdfs` |
 | AI | Anthropic SDK v0.82 (`@anthropic-ai/sdk`) | Claude drives intake chat + scope generation. |
 | Background jobs | Inngest v4.1 | 2-arg `createFunction` API. Function at `inngest/functions/generate-scope.ts`. Only fires when `INNGEST_EVENT_KEY` is set — empty key causes SDK to hang trying localhost:8288. |
-| Email | Resend v6 | Currently stubbed — key present, no sends wired yet. |
+| Email | Resend v6 | `lib/resend.ts` lazy singleton. Agency notification wired in `/api/intake/complete`. **Sender domain `notifications@monocular.so` must be verified in Resend dashboard before emails deliver.** |
 | PDF | `@react-pdf/renderer` v4.3 | Used in `/api/scopes/[id]/export` route. |
 | Validation | Zod v4.3 | |
 | Styling | Tailwind CSS | Orange brand color: `orange-500` / `#F97316`. |
@@ -147,14 +147,25 @@ After any settings save that changes agency-level data, call `router.refresh()` 
 
 ---
 
+## What's been built
+
+- **P0 complete — Intake Links V2 + iterative intake/session memory**: rich link context fields, `intakeIterations` history table, iterative prompt injection, decision card (Continue / Modify / Complete), 4-step `CreateLinkModal`, reusable links
+- **Scope naming**: `scopes.name` column; computed at completion as `"{ClientCompany} — {Label} v{N}"` with graceful fallbacks. Shown in list and editor header.
+- **Agency notification email**: fires via `after()` in `/api/intake/complete`. Uses Resend → sends to all Clerk org admins via `clerkClient().organizations.getOrganizationMembershipList`. Silently swallowed on failure. **Requires `notifications@monocular.so` sender domain verified in Resend dashboard before emails deliver.**
+- **Scope editor — full redesign**: full-height two-panel layout (left scrolls, right transcript panel is fixed-width and **user-draggable** — drag handle between panels, 240–640px range). Inline editing for ALL fields: executiveSummary, deliverables (title/desc/phase), milestones (name/duration, reorder), outOfScope, riskFlags (severity/title/desc), assumptions, pricingEstimate (low/high/currency). Add/remove/reorder throughout. Left content fills available space when sidebar collapses.
+- **PDF stale indicator**: orange dot badge on Export PDF button after any edit; clears on successful export. Tooltip: "Changes made since last export".
+- **Version history strip**: scope editor fetches sibling scopes by `intakeLinkId`. Shows v1/v2/v3 pills above the scope title — current version in orange, others are grey nav links.
+- **Scopes list grouping**: scopes sharing an `intakeLinkId` are grouped into one card. Latest version is the main row; older versions appear in an "Earlier" strip below with individual links, status badges, and timestamps.
+- **Scope editor currencies**: full ISO 4217 currency list (~150 currencies) in the pricing section. Top 10 by BIS trading volume in a pinned group (USD, EUR, INR, JPY, GBP, AUD, CAD, CHF, CNY, HKD), then all others alphabetically.
+- **Sidebar user card**: avatar + name + email, links to `/account`. Clerk `UserButton` removed.
+- **Account page**: personal profile card at top (edit profile via `openUserProfile()`, sign out), org settings, AI preferences, intake defaults.
+- **Settings project-type editor**: back button and post-save redirect fixed (were 404ing due to spurious `/dashboard/` prefix).
+
 ## What's not built yet
 
-- **Intake Links V2 + iterative intake loop** — this is now the main product gap and highest-priority implementation track
-- **Send scope to client** — Resend is wired but no email send implemented
-- **Inline editing for deliverables/milestones** — only `executiveSummary` is editable in the scope editor; other fields are read-only
-- **Client scope acceptance** — no client-facing scope review/sign-off flow
-- **Agency notification on intake complete** — no email sent when a client finishes the intake chat
-- **Team management / admin console** — placeholder built in Account page; roles (Admin, Ops, Team Member), org email vs personal email segregation planned
+- **Send scope to client** — Resend helper exists at `lib/resend.ts`; no send-to-client flow wired yet. Requires a send action in the scope editor and a `/api/scopes/[id]/send` route. **`clientEmail` must be present on the scope to enable this.** Next in priority.
+- **Client scope acceptance** — no client-facing scope review/sign-off flow; would connect back to iterative intake with prior scope as memory baseline
+- **Team management / admin console** — placeholder in Account page; roles (Admin, Ops, Team Member), org email vs personal email segregation planned
 - **Inngest production keys** — `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY` still need wiring for production
 - **Clerk webhook production config** — `organization.created` webhook needs to point to production URL
 
@@ -171,13 +182,15 @@ This section is the source of truth for the next major build phase. The goal is 
 
 ### Priority order
 
-1. **P0: Intake Links V2 + iterative intake/session memory**
-2. **P1: Send scope to client**
-3. **P1: Inline editing for deliverables and milestones**
-4. **P2: Client-facing scope acceptance / revision loop**
-5. **P2: Agency notification on intake complete**
-6. **P3: Team management / admin console**
-7. **P3: Production infrastructure wiring**
+1. ~~**P0: Intake Links V2 + iterative intake/session memory**~~ ✅ Done
+2. ~~**P1: Inline editing for deliverables and milestones**~~ ✅ Done (full scope editor redesign — all fields editable, draggable transcript panel)
+3. ~~**P2: Agency notification on intake complete**~~ ✅ Done (Resend, fires in `after()`)
+4. ~~**PDF stale indicator**~~ ✅ Done
+5. ~~**Version history strip + scopes list grouping**~~ ✅ Done
+6. **P1: Send scope to client** — next up
+7. **P2: Client-facing scope acceptance / revision loop**
+8. **P3: Team management / admin console**
+9. **P3: Production infrastructure wiring**
 
 ### P0 — Intake Links V2 + iterative intake/session memory
 

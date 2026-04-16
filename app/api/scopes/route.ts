@@ -20,12 +20,14 @@ export async function GET() {
     .select({
       id: scopes.id,
       status: scopes.status,
+      name: scopes.name,
       clientName: scopes.clientName,
       clientEmail: scopes.clientEmail,
       generatedScope: scopes.generatedScope,
       createdAt: scopes.createdAt,
       projectTypeId: scopes.projectTypeId,
       projectTypeName: projectTypes.name,
+      intakeLinkId: scopes.intakeLinkId,
     })
     .from(scopes)
     .leftJoin(projectTypes, eq(scopes.projectTypeId, projectTypes.id))

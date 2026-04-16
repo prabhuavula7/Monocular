@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Plus, Copy, Check, Pencil, Trash2, X, Link2,
-  CheckCircle2, Clock, Ban, RotateCcw,
+  CheckCircle2, Clock, Ban, RotateCcw, RefreshCw,
 } from 'lucide-react'
 import { CreateLinkModal } from '@/components/dashboard/CreateLinkModal'
 import { formatRelativeTime } from '@/lib/utils'
@@ -11,12 +11,17 @@ import { formatRelativeTime } from '@/lib/utils'
 interface IntakeLink {
   id: string
   token: string
+  label: string | null
   clientName: string | null
   clientEmail: string | null
+  clientCompany: string | null
   projectTypeName: string | null
+  engagementType: string | null
   usedAt: string | null
   expiresAt: string | null
   isDeprecated: boolean
+  iterationCount: number | null
+  latestScopeId: string | null
   createdAt: string
 }
 
@@ -42,19 +47,39 @@ function CopyButton({ url }: { url: string }) {
 
 function EditModal({ link, onSave, onClose }: {
   link: IntakeLink
-  onSave: (id: string, data: { clientName?: string; clientEmail?: string }) => Promise<void>
+  onSave: (id: string, data: Record<string, unknown>) => Promise<void>
   onClose: () => void
 }) {
-  const [name, setName] = useState(link.clientName ?? '')
-  const [email, setEmail] = useState(link.clientEmail ?? '')
+  const [label, setLabel] = useState(link.label ?? '')
+  const [clientName, setClientName] = useState(link.clientName ?? '')
+  const [clientEmail, setClientEmail] = useState(link.clientEmail ?? '')
+  const [clientCompany, setClientCompany] = useState(link.clientCompany ?? '')
   const [saving, setSaving] = useState(false)
+  const [emailError, setEmailError] = useState('')
+
+  function validate() {
+    if (clientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail)) {
+      setEmailError('Enter a valid email address')
+      return false
+    }
+    setEmailError('')
+    return true
+  }
 
   async function handleSave() {
+    if (!validate()) return
     setSaving(true)
-    await onSave(link.id, { clientName: name || undefined, clientEmail: email || undefined })
+    await onSave(link.id, {
+      label: label || undefined,
+      clientName: clientName || undefined,
+      clientEmail: clientEmail || undefined,
+      clientCompany: clientCompany || undefined,
+    })
     setSaving(false)
     onClose()
   }
+
+  const inputCls = 'w-full rounded-lg border border-line bg-panel px-3 py-2.5 text-sm text-ink placeholder-ink-3 focus:outline-none focus:ring-2 focus:ring-orange/30 focus:border-orange/50'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -68,14 +93,25 @@ function EditModal({ link, onSave, onClose }: {
         </div>
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-ink-2 mb-1.5">Client Name</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Acme Corp"
-              className="w-full rounded-lg border border-line bg-panel px-3 py-2.5 text-sm text-ink placeholder-ink-3 focus:outline-none focus:ring-2 focus:ring-orange/30 focus:border-orange/50" />
+            <label className="block text-xs font-medium text-ink-2 mb-1.5">
+              Label <span className="text-ink-3 font-normal">(internal)</span>
+            </label>
+            <input type="text" value={label} onChange={e => setLabel(e.target.value)} placeholder="Q1 discovery — Acme Corp" className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-ink-2 mb-1.5">Client Name</label>
+              <input type="text" value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Jane Smith" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-ink-2 mb-1.5">Company</label>
+              <input type="text" value={clientCompany} onChange={e => setClientCompany(e.target.value)} placeholder="Acme Corp" className={inputCls} />
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-ink-2 mb-1.5">Client Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contact@acme.com"
-              className="w-full rounded-lg border border-line bg-panel px-3 py-2.5 text-sm text-ink placeholder-ink-3 focus:outline-none focus:ring-2 focus:ring-orange/30 focus:border-orange/50" />
+            <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder="jane@acme.com" className={inputCls} />
+            {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
           </div>
           <button onClick={handleSave} disabled={saving}
             className="w-full bg-orange text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-orange-hover disabled:opacity-50 transition-colors">
@@ -85,6 +121,10 @@ function EditModal({ link, onSave, onClose }: {
       </div>
     </div>
   )
+}
+
+function displayName(link: IntakeLink): string {
+  return link.label || link.clientName || link.clientCompany || 'Untitled link'
 }
 
 export default function IntakePage() {
@@ -104,13 +144,13 @@ export default function IntakePage() {
   useEffect(() => { fetchLinks() }, [fetchLinks])
   useEffect(() => { if (!modalOpen) fetchLinks() }, [modalOpen, fetchLinks])
 
-  async function handleEdit(id: string, data: { clientName?: string; clientEmail?: string }) {
+  async function handleEdit(id: string, data: Record<string, unknown>) {
     await fetch(`/api/links/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
-    setLinks(prev => prev.map(l => l.id === id ? { ...l, ...data } : l))
+    setLinks(prev => prev.map(l => l.id === id ? { ...l, ...data } as IntakeLink : l))
   }
 
   async function handleToggleDeprecate(link: IntakeLink) {
@@ -240,6 +280,7 @@ export default function IntakePage() {
           {filtered.map(link => {
             const intakeUrl = `${window.location.origin}/intake/${link.token}`
             const isExpired = link.expiresAt ? new Date(link.expiresAt) < new Date() : false
+            const iterCount = link.iterationCount ?? 0
             return (
               <div
                 key={link.id}
@@ -250,11 +291,17 @@ export default function IntakePage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className={`text-sm font-medium truncate ${link.isDeprecated ? 'text-ink-3 line-through' : 'text-ink'}`}>
-                      {link.clientName ?? 'No name'}
+                      {displayName(link)}
                     </p>
                     {link.projectTypeName && (
                       <span className="text-[10px] bg-panel-hover border border-line text-ink-3 px-2 py-0.5 rounded-full">
                         {link.projectTypeName}
+                      </span>
+                    )}
+                    {iterCount > 0 && (
+                      <span className="text-[10px] bg-panel-hover border border-line text-ink-3 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <RefreshCw className="w-2.5 h-2.5" />
+                        {iterCount} {iterCount === 1 ? 'round' : 'rounds'}
                       </span>
                     )}
                     {link.isDeprecated && (
@@ -271,7 +318,7 @@ export default function IntakePage() {
                     )}
                   </div>
                   <p className="text-xs text-ink-3 mt-0.5">
-                    {link.clientEmail ?? 'No email'}
+                    {[link.clientEmail, link.clientCompany].filter(Boolean).join(' · ') || 'No contact info'}
                     {' · '}Created {formatRelativeTime(link.createdAt)}
                     {link.usedAt && ` · Last used ${formatRelativeTime(link.usedAt)}`}
                   </p>

@@ -3,7 +3,8 @@ import type { AgencyConfig, ProjectTypeConfig, Message } from '@/types'
 export function buildGenerationPrompt(
   agency: AgencyConfig,
   projectType: ProjectTypeConfig | null,
-  transcript: Message[]
+  transcript: Message[],
+  priorScopeSummary?: string | null,
 ): string {
   const transcriptText = transcript
     .map((m) => `${m.role === 'user' ? 'CLIENT' : 'INTAKE'}: ${m.content}`)
@@ -80,7 +81,12 @@ ${
     : ''
 }
 
-## TRANSCRIPT
+${priorScopeSummary ? `## PRIOR SCOPE BASELINE
+This is a follow-up iteration. The prior scope is summarized below. Use it as the baseline — update only what the new transcript changes or clarifies. Do not rewrite sections that were not discussed in this round.
+
+${priorScopeSummary}
+
+` : ''}## TRANSCRIPT
 ${transcriptText}
 `.trim()
 }

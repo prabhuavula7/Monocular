@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
-import { agencies, projectTypes, scopes } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { agencies, intakeIterations, projectTypes, scopes } from '@/lib/db/schema'
+import { and, desc, eq, ne } from 'drizzle-orm'
 import { anthropic, GENERATION_MODEL } from '@/lib/anthropic'
 import { buildGenerationPrompt } from '@/lib/prompts/generation'
 import { GeneratedScopeSchema } from '@/lib/schemas'
@@ -30,7 +30,26 @@ export async function runGenerateScope(scopeId: string): Promise<void> {
     rateCurrency: agency.rateCurrency ?? 'USD',
   }
 
-  const prompt = buildGenerationPrompt(agencyConfig, projectType, scope.transcript as Message[])
+  // Load prior iteration summary for iterative scope generation
+  let priorScopeSummary: string | null = null
+  if (scope.intakeLinkId) {
+    const [lastIteration] = await db
+      .select()
+      .from(intakeIterations)
+      .where(
+        and(
+          eq(intakeIterations.intakeLinkId, scope.intakeLinkId),
+          ne(intakeIterations.scopeId, scope.id),
+        )
+      )
+      .orderBy(desc(intakeIterations.iterationNumber))
+      .limit(1)
+    if (lastIteration?.scopeSummary) {
+      priorScopeSummary = lastIteration.scopeSummary
+    }
+  }
+
+  const prompt = buildGenerationPrompt(agencyConfig, projectType, scope.transcript as Message[], priorScopeSummary)
 
   const response = await anthropic.messages.create({
     model: GENERATION_MODEL,
@@ -93,4 +112,33 @@ export async function runGenerateScope(scopeId: string): Promise<void> {
   }
 
   await db.update(scopes).set({ generatedScope, updatedAt: new Date() }).where(eq(scopes.id, scopeId))
+
+  // Update the intakeIterations record with a brief scope summary for future iterations
+  if (scope.intakeLinkId) {
+    const scopeSummary = buildScopeSummary(generatedScope)
+    await db
+      .update(intakeIterations)
+      .set({ scopeSummary })
+      .where(eq(intakeIterations.scopeId, scope.id))
+  }
+}
+
+function buildScopeSummary(scope: GeneratedScope): string {
+  const parts: string[] = []
+
+  parts.push(scope.executiveSummary)
+
+  const deliverableNames = scope.deliverables.slice(0, 5).map(d => d.title).join(', ')
+  if (deliverableNames) parts.push(`Key deliverables: ${deliverableNames}`)
+
+  const milestoneNames = scope.milestones.map(m => `${m.name} (${m.duration})`).join(' → ')
+  if (milestoneNames) parts.push(`Timeline: ${milestoneNames}`)
+
+  const { low, high, currency } = scope.pricingEstimate
+  parts.push(`Estimate: ${currency}${low.toLocaleString()}–${currency}${high.toLocaleString()}`)
+
+  const highRisks = scope.riskFlags.filter(r => r.severity === 'high').map(r => r.title)
+  if (highRisks.length > 0) parts.push(`High risks: ${highRisks.join(', ')}`)
+
+  return parts.join('. ')
 }
