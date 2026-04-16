@@ -118,11 +118,12 @@ Connection string priority: `DATABASE_URL` → `POSTGRES_URL` (Vercel Supabase i
 
 ## Intake link behavior
 
-- Links are **reusable by default** — no `expiresAt` set on creation.
-- `usedAt` is updated to `now()` on each session start (tracks last use, does not block reuse).
+- Links are **reusable by default** and should remain valid until the agency explicitly deletes or deprecates them.
+- Completing an intake must **not** invalidate the token. A single intake link may produce multiple scope iterations over time.
+- `usedAt` should be treated as **last completed iteration timestamp**, not as a lock or one-time-use marker.
 - A link is deactivated by setting `isDeprecated = true` via PATCH `/api/links/[id]`.
-- `expiresAt` is optional and still checked — set explicitly if time-limited links are needed.
-- Stale incomplete sessions for a link are cleared when the same link is started again after a prior completion.
+- `expiresAt` is optional and still checked — set it only for intentionally time-limited links.
+- Future iterative behavior must preserve prior iteration context instead of deleting the useful history the next round needs.
 
 ---
 
@@ -146,25 +147,345 @@ After any settings save that changes agency-level data, call `router.refresh()` 
 
 ---
 
-## Known broken links (fix before shipping)
-
-`app/app/(dashboard)/settings/project-types/page.tsx`:
-- Line 44: back link → `/dashboard/settings` should be `/settings`
-- Line 84: Edit link → `/dashboard/settings/project-types/${id}` should be `/settings/project-types/${id}`
-- Line 102: Add link → `/dashboard/settings/project-types/new` — route does not exist yet
-
----
-
 ## What's not built yet
 
+- **Intake Links V2 + iterative intake loop** — this is now the main product gap and highest-priority implementation track
 - **Send scope to client** — Resend is wired but no email send implemented
-- **New project type creation UI** — `/settings/project-types/new` route does not exist
 - **Inline editing for deliverables/milestones** — only `executiveSummary` is editable in the scope editor; other fields are read-only
 - **Client scope acceptance** — no client-facing scope review/sign-off flow
 - **Agency notification on intake complete** — no email sent when a client finishes the intake chat
 - **Team management / admin console** — placeholder built in Account page; roles (Admin, Ops, Team Member), org email vs personal email segregation planned
 - **Inngest production keys** — `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY` still need wiring for production
 - **Clerk webhook production config** — `organization.created` webhook needs to point to production URL
+
+---
+
+## Deep Dive Implementation Gameplan
+
+This section is the source of truth for the next major build phase. The goal is to support:
+
+- General-purpose intake links and existing-template intake links
+- Rich link-level context fields that get attached to the intake system prompt
+- Reusable, iterative links that survive multiple rounds of discovery and re-scoping
+- A clean client experience with zero dead ends and explicit post-conversation choices: continue, modify, or complete
+
+### Priority order
+
+1. **P0: Intake Links V2 + iterative intake/session memory**
+2. **P1: Send scope to client**
+3. **P1: Inline editing for deliverables and milestones**
+4. **P2: Client-facing scope acceptance / revision loop**
+5. **P2: Agency notification on intake complete**
+6. **P3: Team management / admin console**
+7. **P3: Production infrastructure wiring**
+
+### P0 — Intake Links V2 + iterative intake/session memory
+
+#### Product requirements
+
+- Agencies must be able to create a link for either:
+  - a **general-purpose scope** with no pre-selected template
+  - an **existing template scope** backed by a `projectTypeId`
+- The create/edit flow must capture more than client name/email. The link needs reusable context that can influence Claude's intake behavior.
+- Links stay valid until deprecated or deleted. Completing one scope is just one iteration, not the end of the link.
+- After iteration 1 is complete and the first scope is generated, the next intake round must pull a **summarized memory** of:
+  - the prior conversation
+  - the prior generated scope
+  - any requested changes or unresolved questions
+- The end-client experience must remain smooth and low-friction. No abrupt dead-end completion state, no blocking alerts, no fragile edge-case behavior.
+- When Claude reaches a logical stopping point, the client should see a post-message card or modal with three actions:
+  - **Continue**
+  - **Modify / clarify**
+  - **Complete intake**
+
+#### Data model changes
+
+Touch these files first:
+
+- `lib/db/schema.ts`
+- `types/index.ts`
+- `app/api/links/route.ts`
+- `app/api/links/[id]/route.ts`
+- `app/api/intake/start/route.ts`
+- `app/api/intake/message/route.ts`
+- `app/api/intake/complete/route.ts`
+
+Add link-level prompt context to `intakeLinks`. Suggested fields:
+
+- `label` or `projectLabel` — internal label for the agency
+- `clientCompany`
+- `clientWebsite`
+- `clientIndustry`
+- `primaryObjective`
+- `successDefinition`
+- `budgetContext`
+- `timelineContext`
+- `stakeholderContext`
+- `technicalContext`
+- `mustCapture` — things Claude must make sure to cover
+- `excludedTopics` — topics deliberately out of scope
+- `agencyInstructions` — internal steering notes for the intake assistant
+- `engagementType` — e.g. `general` or `template`
+- `latestScopeId` — optional pointer to the most recent scope for faster lookup
+- `iterationCount` — cached count for dashboard display
+
+Expand `intakeSessions` so the client can stop at a decision point instead of being forced straight into completion. Suggested fields:
+
+- `status` — `active | awaiting_confirmation | completed`
+- `iterationNumber`
+- `parentScopeId` — most recent prior scope if this is a follow-up round
+- `linkContextSnapshot` — frozen copy of link context used for this round
+- `priorIterationSummary` — compact summary injected into the prompt
+- `completionCandidate` or `readyToComplete` boolean
+- `completionSummary` — the summary generated for reuse in the next iteration
+- `clientDecision` — `continue | modify | complete` once selected
+
+If `intakeSessions` becomes too overloaded, add a dedicated history table (for example `intakeIterations`) instead of stuffing every historical artifact into `scopes`. That table should store:
+
+- `intakeLinkId`
+- `scopeId`
+- `iterationNumber`
+- `conversationSummary`
+- `scopeSummary`
+- `changeLog`
+- `openQuestions`
+- `createdAt`
+
+#### Prompt architecture
+
+Keep `composeIntakePrompt()` as the public entry point, but split it into smaller helpers:
+
+- `renderAgencyContext()`
+- `renderProjectTypeContext()`
+- `renderLinkContext()`
+- `renderIterativeMemoryContext()`
+- `renderCompletionStateInstructions()`
+
+Rules for iterative memory:
+
+- Do **not** replay the entire prior transcript after the first round. That will grow tokens too fast and produce repetitive chat.
+- Inject only a compact memory block with:
+  - prior goals
+  - confirmed decisions
+  - unresolved questions
+  - changes requested since the last scope
+  - a short summary of the latest generated scope
+- For a **modify** flow, explicitly instruct Claude that the last scope is the current baseline and the goal is to gather deltas, not rediscover the entire project from scratch.
+- For a **general** link with no template, start broad. For a **template** link, stay inside the project-type schema but allow iteration-specific overrides from the link context.
+
+Recommended prompt shape:
+
+1. Core behavior
+2. Agency context
+3. Project type context, if present
+4. Link context
+5. Prior iteration memory, if present
+6. Conversation-state instructions:
+   - fresh round
+   - modification round
+   - confirmation-ready round
+
+#### Summaries that feed the next round
+
+Every completed round should generate two summary artifacts:
+
+- `conversationSummary` — what the client said, what was decided, what stayed uncertain
+- `scopeSummary` — short, structured summary of the generated scope and major assumptions
+
+Also capture:
+
+- `openQuestions`
+- `changeLog`
+- `riskCarryForward`
+
+Implementation rule: older history must be compressed as rounds accumulate. Do not send 5 full prior summaries into Claude. After 2-3 rounds, compress older rounds into a single `historicalSummary` and keep only the latest round detailed.
+
+#### Dashboard UX — create/edit link flow
+
+Primary files:
+
+- `components/dashboard/CreateLinkModal.tsx`
+- `app/(dashboard)/intake/page.tsx`
+
+The new create flow should be multi-step and minimal, not one dense form:
+
+1. **Choose mode**
+   - General scope
+   - Existing template
+2. **Choose template**
+   - Only shown when template mode is selected
+3. **Add client + project context**
+   - client/contact basics
+   - company / website / industry
+   - objective / timeline / budget / stakeholders
+   - technical notes / must-cover notes / exclusions
+4. **Review and create**
+   - compact summary of what the AI will know
+   - final shareable link
+
+UI requirements:
+
+- No `alert()` usage
+- Inline validation only
+- Back button between steps
+- Draft state preserved while modal is open
+- Clear distinction between **client-facing data** and **internal agency-only guidance**
+- Clean copy in the final state: link is reusable and stays active until deprecated or deleted
+
+The edit modal in `app/(dashboard)/intake/page.tsx` should be upgraded to the same schema. Do not maintain a tiny edit form for name/email while the create flow has a larger model.
+
+#### Public intake UX — zero-error client flow
+
+Primary file:
+
+- `app/intake/[token]/IntakeChatClient.tsx`
+
+Current behavior hard-completes too early. Replace that with a decision state.
+
+Target behavior:
+
+- Claude asks one question at a time as it already does.
+- When Claude reaches its completion signal, the UI shows a post-message decision card embedded in the chat, not a hard redirect to a terminal “thanks” state.
+- The decision card must offer:
+  - **Continue** — keep chatting in the same session
+  - **Modify / clarify** — ask what should be changed or clarified and continue in the same session
+  - **Complete intake** — finalize, create the scope, then show a calm success state
+
+Completion UX rules:
+
+- Continue should simply dismiss the confirmation card and keep the input enabled.
+- Modify should inject a clear assistant follow-up like “Tell me what you want to change or clarify” and keep the session active.
+- Complete should call `/api/intake/complete`, then show a non-dead-end success screen that explicitly says the same link can be reopened later for another revision round.
+- On refresh, the client should resume the session or the confirmation state cleanly.
+- Network failures must be recoverable inline:
+  - keep unsent draft text
+  - show a retry message
+  - never lose the visible transcript
+
+#### API behavior changes
+
+`POST /api/links`
+
+- Accept the expanded link payload
+- Persist reusable link context
+- Return enough data for the dashboard to optimistically render the new link row
+
+`PATCH /api/links/[id]`
+
+- Support editing all prompt-context fields, not just name/email/template/deprecation
+
+`POST /api/intake/start`
+
+- Load link context + latest completed iteration summary + latest scope summary
+- Resume an active session if one exists
+- If starting a new round after a completed scope, seed a new session with iterative memory instead of deleting useful history
+
+`POST /api/intake/message`
+
+- Continue streaming assistant replies
+- Detect “ready to complete” state, but do **not** auto-complete the intake
+- Return a clear signal such as `X-Intake-Ready-To-Complete: true`
+- Persist session status as `awaiting_confirmation` when appropriate
+
+`POST /api/intake/complete`
+
+- Be explicitly client-driven
+- Create a new scope row for this iteration
+- Update link metadata (`usedAt`, `latestScopeId`, `iterationCount`)
+- Persist summary artifacts for the next round
+- Keep the link reusable
+- Be idempotent: completing the same round twice should return the existing scope id
+
+#### Scope generation changes for iterative rounds
+
+Primary files:
+
+- `lib/run-generate-scope.ts`
+- `lib/prompts/generation.ts`
+
+For follow-up iterations, generation should know whether this round is:
+
+- a fresh scope
+- a revised scope based on a prior one
+
+The generation prompt should include a compact note about the previous scope when present so the new scope reflects deltas instead of drifting or rewriting unrelated areas.
+
+If this becomes noisy in the main generation prompt, add a separate helper for “previous scope baseline context” rather than inlining it directly in `buildGenerationPrompt()`.
+
+#### Non-negotiable implementation rules
+
+- Never use `usedAt` to block reuse.
+- Never delete historical summaries that the next iteration needs.
+- Never auto-finalize when Claude says it has enough; the client must explicitly choose complete.
+- Never rely on modal-only state for critical session data. Refresh must be safe.
+- Never present blocking browser alerts to the end client.
+
+### P1 — Send scope to client
+
+Files:
+
+- `app/api/scopes/[id]/export/route.tsx`
+- new `app/api/scopes/[id]/send/route.ts`
+- `app/(dashboard)/scopes/[id]/ScopeEditorClient.tsx`
+
+Plan:
+
+- Add a send action that generates or reuses the latest PDF, emails it via Resend, and updates scope status to `sent`.
+- Require `clientEmail`; disable the action in the UI when missing.
+- Use a shared helper for PDF creation so export and send do not duplicate logic.
+- Keep the email template plain, short, and branded. No large HTML system.
+
+### P1 — Inline editing for deliverables and milestones
+
+Files:
+
+- `app/(dashboard)/scopes/[id]/ScopeEditorClient.tsx`
+
+Plan:
+
+- Move generated scope editing to a normalized local editor state.
+- Support add/edit/delete/reorder for deliverables and milestones.
+- Preserve IDs so downstream PDF/export logic remains stable.
+- Auto-save with the same debounce pattern already used for `executiveSummary`.
+
+### P2 — Client-facing scope acceptance / revision loop
+
+This should connect directly to the Intake Links V2 work.
+
+Plan:
+
+- Add a signed client review URL per scope
+- Client can approve, request changes, or leave comments
+- “Request changes” should reopen the same intake link in iterative mode with the prior scope summary injected as memory
+
+### P2 — Agency notification on intake complete
+
+Plan:
+
+- On scope creation, send an internal email or inbox notification to the agency
+- Include:
+  - client name
+  - project type
+  - link to the scope record
+  - quick summary of risk level / confidence
+
+### P3 — Team management / admin console
+
+Plan:
+
+- Use Clerk org memberships and map them to product roles
+- Keep permissions explicit: Admin, Ops, Team Member
+- Separate personal email identity from org-managed contact channels
+- Add invite / remove / role-change flows only after the intake and scope loop is stable
+
+### P3 — Production infrastructure wiring
+
+Plan:
+
+- Wire `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY` in production
+- Point Clerk `organization.created` webhook to production
+- Add a lightweight deployment checklist in this doc once those values are live
+- Keep dev behavior safe when these keys are absent
 
 ---
 
