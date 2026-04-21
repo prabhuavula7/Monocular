@@ -51,12 +51,13 @@
 - [ ] All anchor links (`#features`, `#how-it-works`, etc.) work
 - [ ] Mobile hamburger menu
 
-### 2.3 Custom Auth Pages (Clerk-powered, custom UI)
-- [ ] Design custom sign-in layout: dark bg, Monocular logo, email/password fields, Google OAuth button — Clerk's `useSignIn()` hook under the hood
-- [ ] Design custom sign-up layout: same treatment + org name field, feeds into Clerk's `useSignUp()` + org creation flow
-- [ ] Remove bare `<SignIn />` / `<SignUp />` Clerk embeds — replace with custom components that call Clerk's headless APIs
-- [ ] Keep `/create-org` flow but redesign it to match the new auth look
-- [ ] Error states, loading spinners, password visibility toggle — all custom
+### 2.3 Custom Auth Pages ✅ DONE
+- [x] Full-screen WebGL2 wave background (DitheringShader) — theme-aware black+orange / white+orange
+- [x] Glassmorphism Clerk panel — dark `bg-black/50` / light `bg-white/80`, backdrop-blur
+- [x] Clerk appearance variables fully themed — fonts, inputs, buttons, footer, dividers
+- [x] Clerk branding hidden via stable `aria-label="Clerk logo"` CSS + MutationObserver
+- [x] ThemeSegment toggle fixed top-right, auto-reads system preference
+- [ ] Redesign `/create-org` to match new auth look
 
 ### 2.4 Hero & Feature Sections
 - [ ] Hero: headline, sub-headline, animated terminal/chat demo mockup (CSS-only), two CTAs (Start free / Book demo)

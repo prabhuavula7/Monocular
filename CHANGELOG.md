@@ -5,6 +5,24 @@ After each coding session, append an entry:
 
 ---
 
+## [2026-04-21] Custom auth pages — wave background + transparent Clerk panels
+
+- Full-screen WebGL2 wave background (`DitheringShader`, shape=wave, pxSize=3, speed=0.6)
+  from 21st.dev registry (`dithering-shader.tsx` + `wave-background.tsx`)
+- Theme-aware wave: dark = `#0a0a0a` + `#F97316`, light = `#ffffff` + `#F97316`
+- Auth layout: wave fixed behind content, ThemeSegment toggle top-right corner
+- `ClerkSignIn` / `ClerkSignUp` client components: glassmorphism panel
+  (dark: `bg-black/50 backdrop-blur-2xl`, light: `bg-white/80`)
+- Clerk appearance variables wired to `resolvedTheme` — all text, inputs, dividers, buttons themed
+- Footer blends into card: matching alpha bg + hairline divider, high-contrast text
+- `HideClerkBanner` client component: `MutationObserver` walks 4 levels up from
+  `a[aria-label="Clerk logo"]` to remove the branding container after mount
+- CSS in auth layout targets `a[aria-label="Clerk logo"]` + direct/grandchild parents
+  (stable across Clerk version bumps — `cl-internal-*` hashes change, aria-label doesn't)
+- Font set to `"Plus Jakarta Sans", system-ui` by name (CSS var didn't resolve inside Clerk)
+- shadcn/ui initialized (`components.json`) for future component installs
+- `CLAUDE-DESIGN-PROMPT.md` added to repo root — comprehensive prompt for marketing site
+
 ## [2026-04-21] Token optimization — prompt caching + history trimming
 
 - `cache_control: ephemeral` added to intake system prompt in `/start` and `/message`

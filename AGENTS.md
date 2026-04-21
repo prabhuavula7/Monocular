@@ -15,12 +15,13 @@ Monocular is a multi-tenant SaaS for service businesses (agencies, consultants, 
 | Auth | Clerk v7 (`@clerk/nextjs`) | Organizations used for multi-tenancy. Middleware in `proxy.ts` (not `middleware.ts`). |
 | Database | Supabase Postgres + Drizzle ORM v0.45 | Lazy singleton init — never import `db` at module level in a way that runs at build time. |
 | File storage | Supabase Storage | Bucket: `scope-pdfs` |
-| AI | Anthropic SDK v0.82 (`@anthropic-ai/sdk`) | Claude drives intake chat + scope generation. |
+| AI | Anthropic SDK v0.82 (`@anthropic-ai/sdk`) | Claude drives intake chat + scope generation. Prompt caching enabled on all system prompts. |
 | Background jobs | Inngest v4.1 | 2-arg `createFunction` API. Only fires when `INNGEST_EVENT_KEY` is set — empty key causes SDK to hang trying localhost:8288. |
 | Email | Resend v6 | `lib/resend.ts` lazy singleton. **Sender domain `notifications@monocular.so` must be verified in Resend dashboard before emails deliver.** |
 | PDF | `@react-pdf/renderer` v4.3 | Used in `/api/scopes/[id]/export` route. |
 | Validation | Zod v4.3 | |
-| Styling | Tailwind CSS | Orange brand color: `orange-500` / `#F97316`. |
+| Styling | Tailwind CSS + shadcn/ui | Orange brand color: `orange-500` / `#F97316`. Font: Plus Jakarta Sans. `components.json` present. |
+| Auth UI | DitheringShader (WebGL2) | Wave background on auth pages. `components/ui/dithering-shader.tsx` + `wave-background.tsx`. |
 
 ---
 
@@ -29,7 +30,11 @@ Monocular is a multi-tenant SaaS for service businesses (agencies, consultants, 
 ```
 app/
   app/
-    (auth)/           # sign-in, sign-up pages
+    (auth)/           # sign-in, sign-up — custom wave bg + transparent Clerk panels
+      layout.tsx      # WaveBackground + ThemeSegment toggle + Clerk branding CSS suppression
+      sign-in/        # ClerkSignIn client component
+      sign-up/        # ClerkSignUp client component
+    (marketing)/      # public marketing site — COMING (Claude Design handoff)
     (dashboard)/      # authenticated area — layout: h-screen overflow-hidden
       dashboard/      # overview: recent scopes + top intake links
       intake/         # intake link management (create, copy, deprecate, delete)
@@ -55,17 +60,30 @@ app/
   inngest/
     client.ts
     functions/generate-scope.ts
+  components/
+    ThemeProvider.tsx # theme context: light/dark/system, reads localStorage, no flash
+    ThemeToggle.tsx   # ThemeToggle (single icon cycle) + ThemeSegment (3-button control)
+    auth/
+      clerk-sign-in.tsx     # theme-aware Clerk SignIn with transparent appearance
+      clerk-sign-up.tsx     # theme-aware Clerk SignUp with transparent appearance
+      hide-clerk-banner.tsx # MutationObserver — removes Clerk branding after mount
+    ui/
+      dithering-shader.tsx  # WebGL2 canvas: simplex/wave/ripple/swirl shaders
+      wave-background.tsx   # full-screen wave, theme-aware (dark=black+orange, light=white+orange)
+      Badge.tsx
   lib/
     db/index.ts       # lazy Drizzle singleton (Proxy pattern)
     db/schema.ts      # agencies, projectTypes, intakeLinks, intakeIterations, scopes
-    anthropic.ts
+    anthropic.ts      # INTAKE_MODEL=haiku-4-5, GENERATION_MODEL=sonnet-4-6
     prompts/          # intake + generation system prompts
-    prompts/core-behavior.ts  # plain prose only in chat — no markdown
-    run-generate-scope.ts     # shared generation logic
+    prompts/core-behavior.ts       # plain prose only in chat — no markdown
+    prompts/generation.ts          # buildGenerationSystemPrompt + buildGenerationUserPrompt (split for caching)
+    run-generate-scope.ts          # shared generation logic
     schemas.ts        # Zod shape for GeneratedScope
     resend.ts         # lazy Resend singleton
   types/              # Message, GeneratedScope, RiskFlag, ReviewFlag, etc.
   proxy.ts            # Clerk middleware (Next.js 16: proxy.ts not middleware.ts)
+  components.json     # shadcn/ui config
 ```
 
 ---
@@ -76,7 +94,7 @@ app/
 - **Dynamic params are a Promise**: always `await params` before use.
 - **`searchParams` is a Promise** in page components.
 - **`cookies()` and `headers()`** are async — `await cookies()`.
-- **`after()` from `next/server`** runs post-response. Requires `experimental: { after: true }` in `next.config.ts`.
+- **`after()` from `next/server`** runs post-response. Stable since Next.js 15.1 — do NOT add `experimental: { after: true }`, that flag was removed and breaks the build.
 
 ---
 
@@ -120,10 +138,16 @@ Scope editor polls `/api/scopes/[id]` every 4s while `generatedScope` is null. R
 See `ROADMAP.md` for the full phased plan. Key upcoming work:
 
 - **Stripe billing** (P1) — subscriptions, paywall middleware, usage limits, billing portal; adds `stripeCustomerId`, `stripeSubscriptionId`, `plan`, `planStatus`, `trialEndsAt` to `agencies` table; new env vars `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`
-- **Marketing website** (P1) — new `(marketing)` route group replacing the static `monocular.html`; pricing page, all nav links wired, login/signup CTAs connected
-- **Custom auth pages** (P1) — replace bare `<SignIn />` / `<SignUp />` Clerk embeds with custom-designed pages using Clerk's headless `useSignIn()` / `useSignUp()` hooks
+- **Marketing website** (P1) — `(marketing)` route group; Claude Design prompt in `CLAUDE-DESIGN-PROMPT.md` at repo root; pages: `/`, `/pricing`, `/docs`, `/support`
 - **Team management / admin console** (P2) — Clerk org memberships → product roles (Admin, Member)
-- **Production infrastructure wiring** (P2) — `INNGEST_EVENT_KEY`/`INNGEST_SIGNING_KEY`, Clerk webhook prod URL, Resend sender domain verification
+- **Production infrastructure wiring** (P2) — upgrade Vercel to Pro (12-function Hobby limit blocks deploys), switch Clerk to production keys (`pk_live_`/`sk_live_`), verify Resend sender domain
+
+## Known production blockers
+
+See `CHANGELOG.md` 2026-04-21 entry for full details.
+
+- 🔴 **Vercel Hobby plan** — 12 serverless function limit blocks every GitHub-triggered deploy. Upgrade team `prabhu-kiran-avulas-projects` to Pro at vercel.com.
+- 🟡 **Clerk dev keys in prod** — `pk_test_`/`sk_test_` keys are set in Vercel production env. Switch to production instance in Clerk dashboard before going live.
 
 ---
 
