@@ -5,6 +5,45 @@ After each coding session, append an entry:
 
 ---
 
+## [2026-04-21] Token optimization — prompt caching + history trimming
+
+- `cache_control: ephemeral` added to intake system prompt in `/start` and `/message`
+  routes — ~90% reduction on Haiku input token cost after turn 1 (~$0.004/session)
+- Generation prompt split into `buildGenerationSystemPrompt` (static schema, cached)
+  and `buildGenerationUserPrompt` (transcript only) — Sonnet schema block cached
+  across generations for the same agency
+- Conversation history trimmed to last 20 messages in `/message` to cap input growth
+
+## [2026-04-21] Deployment fix — next.config.ts experimental.after removed
+
+- `after: true` removed from `experimental` block — `after()` is stable in Next.js 15.1+
+  and the flag no longer exists in `ExperimentalConfig` on 16.x, breaking Vercel builds
+
+## [2026-04-21] Known blocking issues (unresolved)
+
+### 🔴 Vercel Hobby plan — 12 serverless function limit
+The app produces 30 routes (17 API + dynamic pages), exceeding the Hobby plan cap of
+12 serverless functions per deployment. Every `git push`-triggered deploy silently
+fails to upload function outputs — all routes return 404.
+**Fix:** Upgrade team `prabhu-kiran-avulas-projects` to Vercel Pro ($20/mo) at
+`vercel.com/teams/prabhu-kiran-avulas-projects/settings/billing`.
+Alternative: consolidate API routes to ≤12 (see ROADMAP for route consolidation plan).
+
+### 🟡 Clerk development keys in production
+`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` in the Vercel production
+environment are `pk_test_` / `sk_test_` (dev instance: `famous-sailfish-7.clerk.accounts.dev`).
+Dev keys work erratically on non-localhost domains — auth redirects, session persistence,
+and Organizations behave differently than production.
+**Fix:** Clerk dashboard → Switch to Production → copy `pk_live_` / `sk_live_` keys →
+update in Vercel env vars → update Clerk webhook URL to production domain → redeploy.
+
+### 🟡 Vercel project root directory — GitHub integration
+Vercel project `monocular` now has `rootDirectory: app` set via API (fixed 2026-04-21),
+but the first GitHub-triggered build after this fix should be verified to confirm the
+integration respects the new root directory. Manual CLI deploys work correctly.
+
+---
+
 ## [pre-2026-04-21] P0 — Intake Links V2 + iterative intake/session memory
 
 - Rich link context fields on `intakeLinks` (clientCompany, primaryObjective, budgetContext, etc.)
