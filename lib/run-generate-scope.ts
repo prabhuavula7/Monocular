@@ -2,7 +2,7 @@ import { db } from '@/lib/db'
 import { agencies, intakeIterations, projectTypes, scopes } from '@/lib/db/schema'
 import { and, desc, eq, ne } from 'drizzle-orm'
 import { anthropic, GENERATION_MODEL } from '@/lib/anthropic'
-import { buildGenerationPrompt } from '@/lib/prompts/generation'
+import { buildGenerationSystemPrompt, buildGenerationUserPrompt } from '@/lib/prompts/generation'
 import { GeneratedScopeSchema } from '@/lib/schemas'
 import type { AgencyConfig, GeneratedScope, ProjectTypeConfig, ReviewFlag, Message } from '@/types'
 
@@ -49,12 +49,14 @@ export async function runGenerateScope(scopeId: string): Promise<void> {
     }
   }
 
-  const prompt = buildGenerationPrompt(agencyConfig, projectType, scope.transcript as Message[], priorScopeSummary)
+  const systemPrompt = buildGenerationSystemPrompt(agencyConfig, projectType)
+  const userPrompt = buildGenerationUserPrompt(scope.transcript as Message[], priorScopeSummary)
 
   const response = await anthropic.messages.create({
     model: GENERATION_MODEL,
     max_tokens: 4000,
-    messages: [{ role: 'user', content: prompt }],
+    system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+    messages: [{ role: 'user', content: userPrompt }],
   })
 
   const rawJson = response.content[0].type === 'text' ? response.content[0].text : '{}'

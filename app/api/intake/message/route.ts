@@ -79,7 +79,9 @@ export async function POST(req: NextRequest) {
 
   const systemPrompt = composeIntakePrompt(agencyConfig, projectType)
 
-  const claudeMessages = messages.map((m) => ({
+  // Keep last 20 turns — older context is already reflected in Claude's responses
+  const recentMessages = messages.slice(-20)
+  const claudeMessages = recentMessages.map((m) => ({
     role: m.role as 'user' | 'assistant',
     content: m.content,
   }))
@@ -95,7 +97,7 @@ export async function POST(req: NextRequest) {
         const claudeStream = anthropic.messages.stream({
           model: INTAKE_MODEL,
           max_tokens: 500,
-          system: systemPrompt,
+          system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
           messages: claudeMessages,
         })
 

@@ -1,23 +1,7 @@
 import type { AgencyConfig, ProjectTypeConfig, Message } from '@/types'
 
-export function buildGenerationPrompt(
-  agency: AgencyConfig,
-  projectType: ProjectTypeConfig | null,
-  transcript: Message[],
-  priorScopeSummary?: string | null,
-): string {
-  const transcriptText = transcript
-    .map((m) => `${m.role === 'user' ? 'CLIENT' : 'INTAKE'}: ${m.content}`)
-    .join('\n')
-
-  return `
-You are a project scope document generator for ${agency.name}.
-
-## YOUR TASK
-Analyze the intake conversation transcript below and generate a complete,
-structured scope document. Output ONLY valid JSON matching the schema below.
-No preamble, no markdown fences, no explanation.
-
+// Static schema definition — identical across all generations, safe to cache.
+const GENERATION_SCHEMA = `
 ## OUTPUT SCHEMA
 {
   "executiveSummary": "2-3 sentence summary of the project",
@@ -55,10 +39,10 @@ No preamble, no markdown fences, no explanation.
   "pricingEstimate": {
     "low": 15000,
     "high": 25000,
-    "currency": "${agency.rateCurrency || 'USD'}",
+    "currency": "USD",
     "notes": "Brief rationale for the range"
   },
-  "generatedAt": "${new Date().toISOString()}"
+  "generatedAt": "<ISO timestamp>"
 }
 
 NOTE: Do NOT include requiresHumanReview, reviewFlags, or confidence in your output.
@@ -70,23 +54,49 @@ These fields are computed server-side after your response is validated.
 - If budget or timeline was mentioned, factor it into the estimate and notes.
 - Out-of-scope items should be explicit — they protect the agency.
 - If information was missing, make a reasonable assumption and add it to assumptions[].
-${
-  agency.standardAssumptions.length > 0
-    ? `- Include these standard agency assumptions: ${agency.standardAssumptions.join('; ')}`
-    : ''
-}
-${
-  projectType?.milestonePattern
-    ? `- Use these milestone phases: ${projectType.milestonePattern.join(', ')}`
-    : ''
-}
-
-${priorScopeSummary ? `## PRIOR SCOPE BASELINE
-This is a follow-up iteration. The prior scope is summarized below. Use it as the baseline — update only what the new transcript changes or clarifies. Do not rewrite sections that were not discussed in this round.
-
-${priorScopeSummary}
-
-` : ''}## TRANSCRIPT
-${transcriptText}
 `.trim()
+
+export function buildGenerationSystemPrompt(
+  agency: AgencyConfig,
+  projectType: ProjectTypeConfig | null,
+): string {
+  const agencyRules: string[] = []
+
+  if (agency.standardAssumptions.length > 0) {
+    agencyRules.push(`- Include these standard agency assumptions: ${agency.standardAssumptions.join('; ')}`)
+  }
+  if (projectType?.milestonePattern) {
+    agencyRules.push(`- Use these milestone phases: ${projectType.milestonePattern.join(', ')}`)
+  }
+  if (agency.rateCurrency && agency.rateCurrency !== 'USD') {
+    agencyRules.push(`- Use currency: ${agency.rateCurrency}`)
+  }
+
+  return [
+    `You are a project scope document generator for ${agency.name}.`,
+    `Analyze the intake conversation transcript in the user message and generate a complete, structured scope document. Output ONLY valid JSON matching the schema below. No preamble, no markdown fences, no explanation.`,
+    GENERATION_SCHEMA,
+    agencyRules.length > 0 ? `## AGENCY-SPECIFIC RULES\n${agencyRules.join('\n')}` : '',
+  ].filter(Boolean).join('\n\n')
+}
+
+export function buildGenerationUserPrompt(
+  transcript: Message[],
+  priorScopeSummary?: string | null,
+): string {
+  const transcriptText = transcript
+    .map((m) => `${m.role === 'user' ? 'CLIENT' : 'INTAKE'}: ${m.content}`)
+    .join('\n')
+
+  const parts: string[] = []
+
+  if (priorScopeSummary) {
+    parts.push(
+      `## PRIOR SCOPE BASELINE\nThis is a follow-up iteration. Use the prior scope as the baseline — update only what the new transcript changes or clarifies. Do not rewrite sections that were not discussed in this round.\n\n${priorScopeSummary}`
+    )
+  }
+
+  parts.push(`## TRANSCRIPT\n${transcriptText}`)
+
+  return parts.join('\n\n')
 }
