@@ -2,7 +2,7 @@
 
 ## What this project is
 
-Monocular is a multi-tenant SaaS for digital agencies. Agencies create intake links, send them to clients, and the app uses AI to turn the client's chat responses into a structured project scope document. Agencies then review, edit, and export the scope as a PDF.
+Monocular is a multi-tenant SaaS for service businesses (agencies, consultants, studios, and beyond). Firms create intake links, send them to clients, and the app uses AI to turn the client's chat responses into a structured project scope document. Firms then review, edit, and export the scope as a PDF. Long-term direction: evolve from a scoping tool into a scoping engine with a public API, integrations, and vertical expansion.
 
 ---
 
@@ -117,8 +117,13 @@ Scope editor polls `/api/scopes/[id]` every 4s while `generatedScope` is null. R
 
 ## What's not built yet (active pipeline)
 
-- **Team management / admin console** (P3) — Clerk org memberships → product roles (Admin, Ops, Team Member)
-- **Production infrastructure wiring** (P3) — `INNGEST_EVENT_KEY`/`INNGEST_SIGNING_KEY`, Clerk webhook prod URL
+See `ROADMAP.md` for the full phased plan. Key upcoming work:
+
+- **Stripe billing** (P1) — subscriptions, paywall middleware, usage limits, billing portal; adds `stripeCustomerId`, `stripeSubscriptionId`, `plan`, `planStatus`, `trialEndsAt` to `agencies` table; new env vars `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`
+- **Marketing website** (P1) — new `(marketing)` route group replacing the static `monocular.html`; pricing page, all nav links wired, login/signup CTAs connected
+- **Custom auth pages** (P1) — replace bare `<SignIn />` / `<SignUp />` Clerk embeds with custom-designed pages using Clerk's headless `useSignIn()` / `useSignUp()` hooks
+- **Team management / admin console** (P2) — Clerk org memberships → product roles (Admin, Member)
+- **Production infrastructure wiring** (P2) — `INNGEST_EVENT_KEY`/`INNGEST_SIGNING_KEY`, Clerk webhook prod URL, Resend sender domain verification
 
 ---
 
@@ -137,6 +142,9 @@ RESEND_API_KEY
 INNGEST_EVENT_KEY                   # Optional in dev — required in prod
 INNGEST_SIGNING_KEY
 NEXT_PUBLIC_APP_URL
+STRIPE_SECRET_KEY                   # Coming Phase 1
+STRIPE_PUBLISHABLE_KEY              # Coming Phase 1
+STRIPE_WEBHOOK_SECRET               # Coming Phase 1
 ```
 
 ---
