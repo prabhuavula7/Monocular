@@ -58,7 +58,7 @@ async function notifyAgency(opts: {
   const clientLabel = opts.clientName ? ` from ${opts.clientName}` : ''
 
   await resend.emails.send({
-    from: 'Monocular <notifications@monocular.so>',
+    from: process.env.RESEND_FROM_EMAIL ?? 'Monocular <onboarding@resend.dev>',
     to: adminEmails,
     subject: `New intake complete${clientLabel} — ${opts.scopeName}`,
     html: `

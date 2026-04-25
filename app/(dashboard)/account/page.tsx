@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { CheckCircle, Building2, Sliders, Users, Lock, LogOut, User } from 'lucide-react'
+import { CheckCircle, Building2, Sliders, Users, Lock, LogOut, User, CreditCard, ExternalLink } from 'lucide-react'
 import { useUser, useClerk } from '@clerk/nextjs'
+import { PLANS } from '@/lib/stripe'
 
 interface OrgSettings {
   name: string
@@ -14,6 +15,10 @@ interface OrgSettings {
   rateCurrency: string | null
   standardAssumptions: string[]
   customRiskFlags: string[]
+  plan: string | null
+  planStatus: string | null
+  trialEndsAt: string | null
+  stripeCustomerId: string | null
 }
 
 const inputClass = 'w-full rounded-lg border border-line bg-panel px-3 py-2.5 text-sm text-ink placeholder-ink-3 focus:outline-none focus:ring-2 focus:ring-orange/30 focus:border-orange/50 transition-shadow'
@@ -55,6 +60,7 @@ export default function AccountPage() {
   const [riskFlags, setRiskFlags] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState<string | null>(null)
+  const [portalLoading, setPortalLoading] = useState(false)
 
   useEffect(() => {
     fetch('/api/settings')
@@ -92,6 +98,17 @@ export default function AccountPage() {
       alert('Failed to save. Please try again.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function openBillingPortal() {
+    setPortalLoading(true)
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+    } finally {
+      setPortalLoading(false)
     }
   }
 
@@ -198,6 +215,61 @@ export default function AccountPage() {
             <SaveButton section="org" />
           </div>
         </div>
+      </Section>
+
+      {/* Billing */}
+      <Section icon={CreditCard} title="Billing" description="Your plan and subscription">
+        {(() => {
+          const plan = settings?.plan ?? 'trial'
+          const status = settings?.planStatus ?? 'trialing'
+          const trialEnd = settings?.trialEndsAt ? new Date(settings.trialEndsAt) : null
+          const daysLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / 86400000)) : null
+          const planName = plan === 'trial' ? 'Free Trial' : (PLANS[plan as keyof typeof PLANS]?.name ?? plan)
+
+          const statusLabel: Record<string, { label: string; color: string }> = {
+            trialing: { label: 'Trialing', color: 'text-orange-500 bg-orange-500/10' },
+            active:   { label: 'Active',   color: 'text-green-600 bg-green-500/10' },
+            past_due: { label: 'Past due', color: 'text-red-500 bg-red-500/10' },
+            canceled: { label: 'Canceled', color: 'text-ink-3 bg-muted' },
+          }
+          const badge = statusLabel[status] ?? { label: status, color: 'text-ink-3 bg-muted' }
+
+          return (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-ink">{planName}</p>
+                  {daysLeft !== null && status === 'trialing' && (
+                    <p className="text-xs text-ink-3 mt-0.5">{daysLeft} day{daysLeft !== 1 ? 's' : ''} remaining in trial</p>
+                  )}
+                </div>
+                <span className={`text-xs font-medium px-2 py-1 rounded-full ${badge.color}`}>
+                  {badge.label}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                {settings?.stripeCustomerId ? (
+                  <button
+                    onClick={openBillingPortal}
+                    disabled={portalLoading}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-line text-xs font-medium text-ink-2 hover:bg-panel-hover transition-colors disabled:opacity-50"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    {portalLoading ? 'Opening...' : 'Manage billing'}
+                  </button>
+                ) : null}
+                {(plan === 'trial' || status === 'canceled') && (
+                  <a
+                    href="/pricing"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-orange-500 text-white text-xs font-medium hover:bg-orange-600 transition-colors"
+                  >
+                    Upgrade plan
+                  </a>
+                )}
+              </div>
+            </div>
+          )
+        })()}
       </Section>
 
       {/* AI preferences */}

@@ -34,7 +34,8 @@ Monocular turns a client conversation into a structured, ready-to-send project s
 | File storage | Supabase Storage (`scope-pdfs` bucket) |
 | AI | Anthropic Claude (intake chat + scope generation) |
 | Background jobs | Inngest |
-| Email | Resend (stubbed — not yet wired) |
+| Email | Resend (`onboarding@resend.dev` shared domain in dev) |
+| Billing | Stripe — subscriptions, checkout, billing portal, webhooks |
 | PDF | @react-pdf/renderer |
 | Deployment | Vercel |
 
@@ -71,9 +72,22 @@ CLERK_WEBHOOK_SECRET=whsec_...
 ANTHROPIC_API_KEY=sk-ant-...
 
 RESEND_API_KEY=re_...
+RESEND_FROM_EMAIL=Monocular <onboarding@resend.dev>  # or your verified sender
 
 INNGEST_EVENT_KEY=...
 INNGEST_SIGNING_KEY=...
+
+# Stripe
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...         # from: stripe listen --forward-to localhost:3000/api/webhooks/stripe
+
+STRIPE_PRICE_SOLO=price_...
+STRIPE_PRICE_SOLO_ANNUAL=price_...
+STRIPE_PRICE_STUDIO=price_...
+STRIPE_PRICE_STUDIO_ANNUAL=price_...
+STRIPE_PRICE_AGENCY=price_...
+STRIPE_PRICE_AGENCY_ANNUAL=price_...
 
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
@@ -93,6 +107,18 @@ https://<your-ngrok-url>/api/webhooks/clerk
 ```
 
 The webhook seeds an agency row and default project types when you create your first Clerk organization.
+
+### Stripe (local)
+
+Install the Stripe CLI, then run the webhook forwarder in a separate terminal:
+
+```bash
+stripe listen --forward-to localhost:3000/api/webhooks/stripe
+```
+
+Copy the printed `whsec_...` secret into `.env.local` as `STRIPE_WEBHOOK_SECRET`. Without this, billing DB sync won't work.
+
+Use test card `4242 4242 4242 4242` (any future expiry, any CVC) for checkout testing.
 
 ### Supabase Storage
 

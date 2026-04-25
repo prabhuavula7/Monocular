@@ -77,7 +77,7 @@ export async function POST(
     try {
       const resend = getResend()
       await resend.emails.send({
-        from: 'prabhuavula7@gmail.com',
+        from: process.env.RESEND_FROM_EMAIL ?? 'Monocular <onboarding@resend.dev>',
         to: recipientEmail,
         subject: `Your project scope from ${agency.name} is ready`,
         html: `

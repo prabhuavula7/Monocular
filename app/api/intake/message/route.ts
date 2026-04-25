@@ -42,6 +42,11 @@ export async function POST(req: NextRequest) {
     return new Response('Message limit reached', { status: 429 })
   }
 
+  const RATE_LIMIT_MS = 2000
+  if (session.updatedAt && Date.now() - session.updatedAt.getTime() < RATE_LIMIT_MS) {
+    return new Response('Too many requests', { status: 429 })
+  }
+
   const messages = (session.messages as Message[]).slice()
 
   messages.push({

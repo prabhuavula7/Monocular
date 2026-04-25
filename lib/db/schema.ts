@@ -28,6 +28,12 @@ export const agencies = pgTable('agencies', {
   rateMin: integer('rate_min'),
   rateMax: integer('rate_max'),
   rateCurrency: text('rate_currency').default('USD'),
+  // Stripe billing
+  stripeCustomerId: text('stripe_customer_id'),
+  stripeSubscriptionId: text('stripe_subscription_id'),
+  plan: text('plan').default('trial'),           // 'trial' | 'solo' | 'studio' | 'agency'
+  planStatus: text('plan_status').default('trialing'), // 'trialing' | 'active' | 'past_due' | 'canceled'
+  trialEndsAt: timestamp('trial_ends_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })

@@ -5,6 +5,50 @@ After each coding session, append an entry:
 
 ---
 
+## [2026-04-24] Stripe billing integration — Wave 2 complete
+
+### Pricing tiers renamed and repriced
+- Replaced Starter/Firm/Scale with **Solo / Studio / Agency**
+- Solo: $49/mo · $490/yr (40 scopes, freelancers)
+- Studio: $99/mo · $990/yr (150 scopes, small agencies)
+- Agency: $179/mo · $1,790/yr (unlimited, full-service firms) — gap from Studio reduced from $150 → $80
+- Old Stripe products archived; 6 new products + prices created via Stripe API
+- `lib/stripe.ts` updated with new `PLANS` config and corrected API version (`2026-04-22.dahlia`)
+- `.env.local` updated with new price IDs
+
+### New API routes
+- `POST /api/billing/checkout` — creates Stripe Checkout session, reuses existing customer, supports monthly/annual interval
+- `POST /api/billing/portal` — creates Stripe Billing Portal session for managing subscriptions
+- `POST /api/webhooks/stripe` — handles `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`; syncs plan/status to `agencies` table
+
+### DB changes
+- Added to `agencies` table: `stripeCustomerId`, `stripeSubscriptionId`, `plan`, `planStatus`, `trialEndsAt`
+- Applied via raw SQL (Drizzle interactive prompt bypassed)
+
+### Clerk webhook extended
+- On `organization.created`: sets `plan: 'trial'`, `planStatus: 'trialing'`, `trialEndsAt = now + 14 days`, creates Stripe customer (non-fatal if fails)
+- Fixed missing `eq` import from drizzle-orm
+
+### Paywall
+- `app/(dashboard)/layout.tsx` redirects to `/pricing` when trial expired or plan canceled
+- `proxy.ts` updated to allow `/pricing` as public route
+
+### New pages
+- `/pricing` — public plan comparison page with monthly/annual toggle, feature lists, Stripe Checkout flow; unauthenticated users redirected to sign-in
+- `/account` billing section — shows plan name, status badge, days remaining in trial, Manage billing / Upgrade CTA
+
+### Bugs fixed
+- Stripe API version corrected from `2025-03-31.basil` to `2026-04-22.dahlia` in `lib/stripe.ts` and `scripts/stripe-setup.ts`
+- Missing `eq` import added to `app/api/webhooks/clerk/route.ts`
+
+### Known issues (not yet fixed — tracked in ROADMAP.md P0/P1)
+- `STRIPE_WEBHOOK_SECRET` still empty in `.env.local` — webhook signature verification fails; DB never syncs
+- No guard against duplicate subscriptions if checkout is called for an existing subscriber
+- Scope usage limits defined in PLANS but not enforced at API level
+- No role-based access: all org members can access billing and settings
+
+---
+
 ## [2026-04-21] Custom auth pages — wave background + transparent Clerk panels
 
 - Full-screen WebGL2 wave background (`DitheringShader`, shape=wave, pxSize=3, speed=0.6)

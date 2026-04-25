@@ -133,21 +133,75 @@ Scope editor polls `/api/scopes/[id]` every 4s while `generatedScope` is null. R
 
 ---
 
+## Billing system
+
+Stripe billing is integrated. Source of truth for billing state is the `agencies` table in the DB — Stripe webhooks sync to it. Stripe is not queried at runtime for plan checks.
+
+### Plan tiers (as of 2026-04-24)
+| Key | Name | Monthly | Annual | Scopes/mo | For |
+|---|---|---|---|---|---|
+| `solo` | Solo | $49 | $490 | 40 | Freelancers |
+| `studio` | Studio | $99 | $990 | 150 | Small agencies |
+| `agency` | Agency | $179 | $1,790 | Unlimited | Full-service firms |
+
+### DB fields on `agencies`
+- `plan` — `'trial' | 'solo' | 'studio' | 'agency'`
+- `planStatus` — `'trialing' | 'active' | 'past_due' | 'canceled'`
+- `trialEndsAt` — timestamp; 14-day trial set on org creation, app-managed (not Stripe-managed)
+- `stripeCustomerId` — set on org creation via Clerk webhook
+- `stripeSubscriptionId` — set when checkout completes via Stripe webhook
+
+### Billing API routes
+- `POST /api/billing/checkout` — Stripe Checkout session; creates/reuses customer
+- `POST /api/billing/portal` — Stripe Billing Portal for managing existing subscriptions
+- `POST /api/webhooks/stripe` — webhook handler; requires `STRIPE_WEBHOOK_SECRET`
+
+### Paywall
+Dashboard layout (`app/(dashboard)/layout.tsx`) redirects to `/pricing` when:
+- `plan === 'trial'` AND `trialEndsAt < now` (trial expired), OR
+- `planStatus === 'canceled'`
+
+`past_due` is intentionally allowed through — Stripe retries payment and customers shouldn't be locked out immediately.
+
+### Known billing issues (see ROADMAP P0/P1)
+- `STRIPE_WEBHOOK_SECRET` is empty — webhooks fail signature verification, DB never syncs
+- No guard against duplicate subscriptions in checkout API
+- Scope limits defined in `PLANS` but not enforced at API level
+- No role-based access: all members can reach billing and settings routes
+
+---
+
 ## What's not built yet (active pipeline)
 
 See `ROADMAP.md` for the full phased plan. Key upcoming work:
 
-- **Stripe billing** (P1) — subscriptions, paywall middleware, usage limits, billing portal; adds `stripeCustomerId`, `stripeSubscriptionId`, `plan`, `planStatus`, `trialEndsAt` to `agencies` table; new env vars `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`
-- **Marketing website** (P1) — `(marketing)` route group; Claude Design prompt in `CLAUDE-DESIGN-PROMPT.md` at repo root; pages: `/`, `/pricing`, `/docs`, `/support`
-- **Team management / admin console** (P2) — Clerk org memberships → product roles (Admin, Member)
-- **Production infrastructure wiring** (P2) — upgrade Vercel to Pro (12-function Hobby limit blocks deploys), switch Clerk to production keys (`pk_live_`/`sk_live_`), verify Resend sender domain
+### Billing hardening (Phase 1 P0–P5)
+- **P0:** Wire `STRIPE_WEBHOOK_SECRET` (run `stripe listen --forward-to localhost:3000/api/webhooks/stripe`)
+- **P0:** Guard duplicate subscriptions in checkout API
+- **P1:** E2E billing test (sign up → trial → checkout → webhook → DB sync)
+- **P2:** Role-based access — `org:admin` gates on `/api/billing/*`, `/api/settings/*`, sidebar settings link
+- **P3:** Seat limits per plan (Solo=1, Studio=5, Agency=unlimited) + Clerk membership webhook enforcement
+- **P4:** Scope usage enforcement — count per billing period, return 402 if over limit, surface meter in `/account`
+- **P5:** In-app plan switching UI (upgrade/downgrade without leaving the app)
+
+### Other Phase 1 items
+- **Marketing website** — `(marketing)` route group; Claude Design prompt in `CLAUDE-DESIGN-PROMPT.md` at repo root
+- `/create-org` redesign to match auth pages
+
+### Phase 3+
+- **Team management / admin console** — Clerk org memberships → invite members, manage roles, org-wide scope history
+- **Production infrastructure wiring** — upgrade Vercel to Pro, switch Clerk to production keys, wire Inngest, verify Resend domain
+
+---
 
 ## Known production blockers
 
-See `CHANGELOG.md` 2026-04-21 entry for full details.
+See `CHANGELOG.md` for full details.
 
 - 🔴 **Vercel Hobby plan** — 12 serverless function limit blocks every GitHub-triggered deploy. Upgrade team `prabhu-kiran-avulas-projects` to Pro at vercel.com.
-- 🟡 **Clerk dev keys in prod** — `pk_test_`/`sk_test_` keys are set in Vercel production env. Switch to production instance in Clerk dashboard before going live.
+- 🔴 **`STRIPE_WEBHOOK_SECRET` empty** — every Stripe webhook event fails; billing DB never syncs. Run `stripe listen`, paste secret.
+- 🟡 **Clerk dev keys in prod** — `pk_test_`/`sk_test_` keys in Vercel production env. Switch to `pk_live_`/`sk_live_` before going live.
+- 🟡 **Resend shared domain** — `onboarding@resend.dev` only delivers to verified recipients. Verify custom sender domain for production.
 
 ---
 

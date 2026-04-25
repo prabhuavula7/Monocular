@@ -3,7 +3,9 @@ import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { agencies, projectTypes } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { DEFAULT_PROJECT_TYPES } from '@/lib/defaults'
+import { getStripe } from '@/lib/stripe'
 
 export async function POST(req: Request) {
   const body = await req.text()
@@ -25,9 +27,11 @@ export async function POST(req: Request) {
   if (event.type === 'organization.created') {
     const { id: clerkOrgId, name } = event.data
 
+    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+
     const [agency] = await db
       .insert(agencies)
-      .values({ clerkOrgId, name })
+      .values({ clerkOrgId, name, plan: 'trial', planStatus: 'trialing', trialEndsAt })
       .returning()
 
     await db.insert(projectTypes).values(
@@ -41,6 +45,23 @@ export async function POST(req: Request) {
         pricingContext: pt.pricingContext,
       }))
     )
+
+    // Create Stripe customer in the background — non-fatal if it fails
+    if (process.env.STRIPE_SECRET_KEY) {
+      try {
+        const stripe = getStripe()
+        const customer = await stripe.customers.create({
+          name,
+          metadata: { clerkOrgId, agencyId: agency.id },
+        })
+        await db
+          .update(agencies)
+          .set({ stripeCustomerId: customer.id })
+          .where(eq(agencies.id, agency.id))
+      } catch (err) {
+        console.error('[clerk-webhook] Stripe customer creation failed:', err)
+      }
+    }
   }
 
   return NextResponse.json({ received: true })
