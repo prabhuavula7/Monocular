@@ -15,8 +15,8 @@ export const metadata: Metadata = {
   title: 'Monocular',
   description: 'AI-powered project scoping for service firms',
   icons: {
-    icon: '/monocular_logo_pack/monocular-icon-color.svg',
-    apple: '/monocular_logo_pack/monocular-icon-color.svg',
+    icon: '/monocular-lens2.svg',
+    apple: '/monocular-lens1.png',
   },
 }
 

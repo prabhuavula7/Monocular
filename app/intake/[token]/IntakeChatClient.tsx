@@ -297,14 +297,14 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
 
       {/* Progress bar header — full viewport width */}
       <div className="bg-panel border-b border-line px-6 pt-3 pb-3">
-        {/* Top row: logo · stage label · percentage · theme toggle */}
-        <div className="flex items-center justify-between mb-2.5">
-          <img
-            src="/monocular_logo_pack/monocular-horizontal-black.svg"
-            alt="Monocular"
-            className="h-5 w-auto dark:invert"
-          />
-          <div className="flex items-center gap-3">
+        {/* Top row: [spacer] · logo (centered) · stage info + theme toggle */}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center mb-2.5">
+          <div />
+          <div className="flex items-center justify-center">
+            <img src="/monocular-blacktext.svg" alt="Monocular" className="h-7 w-auto dark:hidden" />
+            <img src="/monocular-whitetext.svg" alt="Monocular" className="h-7 w-auto hidden dark:block" />
+          </div>
+          <div className="flex items-center justify-end gap-3">
             <div className="text-right">
               <span className="text-xs font-medium text-ink-2">{STAGE_META[stage].label}</span>
               <span className="text-xs text-ink-3 ml-2 tabular-nums">{percent}%</span>

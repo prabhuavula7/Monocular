@@ -80,17 +80,22 @@ export function Sidebar({ agencyName }: Props) {
       </button>
 
       {/* Logo */}
-      <div className={`border-b border-sidebar-line flex items-center gap-2.5 overflow-hidden ${collapsed ? 'px-0 py-4 justify-center' : 'px-4 py-4'}`}>
-        <Image
-          src="/monocular_logo_pack/monocular-icon-color.svg"
-          alt="Monocular"
-          width={28}
-          height={28}
-          className="h-7 w-7 flex-shrink-0"
-          priority
-        />
-        {!collapsed && (
-          <span className="text-sm font-semibold text-ink truncate">{agencyName}</span>
+      <div className={`border-b border-sidebar-line overflow-hidden ${collapsed ? 'flex items-center justify-center px-0 py-4' : 'px-4 py-3.5'}`}>
+        {collapsed ? (
+          <Image
+            src="/monocular-lens2.svg"
+            alt="Monocular"
+            width={32}
+            height={32}
+            className="h-8 w-8 flex-shrink-0"
+            priority
+          />
+        ) : (
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <img src="/monocular-blacktext.svg" alt="Monocular" className="h-7 w-auto dark:hidden" />
+            <img src="/monocular-whitetext.svg" alt="Monocular" className="h-7 w-auto hidden dark:block" />
+            <span className="text-xs text-ink-3 truncate mt-0.5">{agencyName}</span>
+          </div>
         )}
       </div>
 
