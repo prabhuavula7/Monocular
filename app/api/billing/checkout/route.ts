@@ -27,6 +27,18 @@ export async function POST(req: NextRequest) {
   const stripe = getStripe()
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
+  // Guard: if an active subscription already exists, send to billing portal instead
+  if (agency.stripeSubscriptionId) {
+    const sub = await stripe.subscriptions.retrieve(agency.stripeSubscriptionId)
+    if (['active', 'trialing', 'past_due'].includes(sub.status)) {
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: sub.customer as string,
+        return_url: `${appUrl}/account`,
+      })
+      return NextResponse.json({ url: portalSession.url })
+    }
+  }
+
   const priceId = interval === 'annual' ? PLANS[plan].annualPriceId : PLANS[plan].monthlyPriceId
 
   if (!priceId) {
