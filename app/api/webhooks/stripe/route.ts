@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { agencies } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { getStripe } from '@/lib/stripe'
+import { getStripe, PLANS } from '@/lib/stripe'
 import type Stripe from 'stripe'
 
 export async function POST(req: Request) {
@@ -45,6 +45,7 @@ export async function POST(req: Request) {
       break
     }
 
+    case 'customer.subscription.created':
     case 'customer.subscription.updated': {
       const sub = event.data.object as Stripe.Subscription
       const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
@@ -57,11 +58,29 @@ export async function POST(req: Request) {
         trialing: 'trialing',
       }
 
-      await db.update(agencies).set({
+      // Plan comes from subscription metadata (set via subscription_data.metadata at checkout time).
+      // Fall back to PLANS price-ID lookup for subscriptions created outside of Checkout.
+      const priceId = sub.items.data[0]?.price.id
+      const planKey = (sub.metadata?.plan as string | undefined)
+        ?? Object.entries(PLANS).find(
+          ([, p]) => p.monthlyPriceId === priceId || p.annualPriceId === priceId
+        )?.[0]
+
+      const baseFields = {
         planStatus: statusMap[sub.status] ?? sub.status,
         stripeSubscriptionId: sub.id,
         updatedAt: new Date(),
-      }).where(eq(agencies.stripeCustomerId, customerId))
+      }
+
+      if (planKey) {
+        await db.update(agencies)
+          .set({ ...baseFields, plan: planKey })
+          .where(eq(agencies.stripeCustomerId, customerId))
+      } else {
+        await db.update(agencies)
+          .set(baseFields)
+          .where(eq(agencies.stripeCustomerId, customerId))
+      }
       break
     }
 

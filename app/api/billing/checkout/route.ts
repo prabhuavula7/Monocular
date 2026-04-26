@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
     cancel_url: `${appUrl}/pricing`,
     allow_promotion_codes: true,
     metadata: { agencyId: agency.id, plan },
+    subscription_data: { metadata: { agencyId: agency.id, plan } },
   })
 
   return NextResponse.json({ url: session.url })
