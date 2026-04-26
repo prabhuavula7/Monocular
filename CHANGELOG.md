@@ -5,6 +5,25 @@ After each coding session, append an entry:
 
 ---
 
+## [2026-04-26] P0 billing fixes + E2E test
+
+### P0 fixes
+- `STRIPE_WEBHOOK_SECRET` wired in `.env.local` — webhooks now verify signatures and update DB
+- Duplicate subscription guard added to `POST /api/billing/checkout`: if org has an active/trialing/past_due subscription, redirects to Stripe Billing Portal instead of creating a new checkout session
+
+### E2E billing test results (all passed)
+- Webhook signature verification: all events return 200
+- `customer.created` → 200 on first checkout
+- `customer.subscription.updated` → correctly syncs `planStatus` + `stripeSubscriptionId` to DB
+- `checkout.session.completed` → 200, handler correct
+- Duplicate subscription guard → redirects to Billing Portal (verified in browser)
+- `invoice.payment_failed` handler → code-verified correct
+
+### Known gap (low priority)
+- `customer.subscription.created` not handled in webhook router — not critical for checkout path (always goes through `checkout.session.completed`) but would miss sync if subscription created outside checkout flow
+
+---
+
 ## [2026-04-25] Team management, RBAC, trial hardening
 
 ### Trial changes

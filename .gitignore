@@ -48,3 +48,4 @@ next-env.d.ts
 *.jsonl
 CLAUDE.md
 AGENTS.md
+.gstack/
