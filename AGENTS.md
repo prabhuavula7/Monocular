@@ -100,9 +100,35 @@ app/
 
 ## Clerk v7 conventions
 
-- `auth()` is async: `const { orgId, userId } = await auth()`
+- `auth()` is async: `const { orgId, userId, orgRole } = await auth()`
 - `orgId` scopes all data — every agency, project type, scope, and intake link is org-scoped
-- Webhook at `/api/webhooks/clerk` handles `organization.created` to seed the agency row
+- `orgRole` is `'org:admin'` or `'org:member'` — check directly, e.g. `if (orgRole !== 'org:admin') return 403`
+- Clerk webhook at `/api/webhooks/clerk` handles `organization.created` to seed the agency row
+
+### Role-based access pattern
+```typescript
+// In API routes
+const { orgId, orgRole } = await auth()
+if (orgRole !== 'org:admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+// In server components / pages
+const { orgId, orgRole } = await auth()
+const isAdmin = orgRole === 'org:admin'
+if (!isAdmin) redirect('/dashboard')
+```
+
+### Guarded routes (as of 2026-04-25)
+| Route | Guard |
+|---|---|
+| `PATCH /api/settings` | org:admin only |
+| `POST /api/billing/checkout` | org:admin only |
+| `POST /api/billing/portal` | org:admin only |
+| `POST /api/team` (invite) | org:admin only |
+| `PATCH /api/team/members/[userId]` | org:admin only |
+| `DELETE /api/team/members/[userId]` | org:admin only |
+| `DELETE /api/team/invitations/[id]` | org:admin only |
+| `/settings/**` (entire subtree) | org:admin → redirect /dashboard |
+| `/account` org/billing sections | org:admin only (member sees profile only) |
 
 ---
 
@@ -147,27 +173,41 @@ Stripe billing is integrated. Source of truth for billing state is the `agencies
 ### DB fields on `agencies`
 - `plan` — `'trial' | 'solo' | 'studio' | 'agency'`
 - `planStatus` — `'trialing' | 'active' | 'past_due' | 'canceled'`
-- `trialEndsAt` — timestamp; 14-day trial set on org creation, app-managed (not Stripe-managed)
+- `trialEndsAt` — timestamp; **7-day** trial set on org creation (reduced from 14d on 2026-04-25), app-managed (not Stripe-managed)
 - `stripeCustomerId` — set on org creation via Clerk webhook
 - `stripeSubscriptionId` — set when checkout completes via Stripe webhook
 
 ### Billing API routes
-- `POST /api/billing/checkout` — Stripe Checkout session; creates/reuses customer
-- `POST /api/billing/portal` — Stripe Billing Portal for managing existing subscriptions
+- `POST /api/billing/checkout` — Stripe Checkout session; creates/reuses customer; **admin-only**
+- `POST /api/billing/portal` — Stripe Billing Portal for managing existing subscriptions; **admin-only**
 - `POST /api/webhooks/stripe` — webhook handler; requires `STRIPE_WEBHOOK_SECRET`
 
+### Team API routes
+- `GET /api/team` — list members + pending invitations (invitations only visible to admins)
+- `POST /api/team` — send Clerk invitation email with seat-limit check; **admin-only**
+- `PATCH /api/team/members/[userId]` — change member role; **admin-only**; cannot self-demote
+- `DELETE /api/team/members/[userId]` — remove member; **admin-only**; cannot self-remove
+- `DELETE /api/team/invitations/[id]` — revoke pending invitation; **admin-only**
+
+### Seat limits (enforced at invite time)
+| Plan | Seats |
+|---|---|
+| trial | 3 |
+| solo | 1 |
+| studio | 5 |
+| agency | ∞ |
+
 ### Paywall
-Dashboard layout (`app/(dashboard)/layout.tsx`) redirects to `/pricing` when:
-- `plan === 'trial'` AND `trialEndsAt < now` (trial expired), OR
-- `planStatus === 'canceled'`
+Dashboard layout (`app/(dashboard)/layout.tsx`) redirects when:
+- `plan === 'trial'` AND `trialEndsAt < now` → `/pricing?expired=1` (shows 60-day data retention banner)
+- `planStatus === 'canceled'` → `/pricing`
 
 `past_due` is intentionally allowed through — Stripe retries payment and customers shouldn't be locked out immediately.
 
-### Known billing issues (see ROADMAP P0/P1)
-- `STRIPE_WEBHOOK_SECRET` is empty — webhooks fail signature verification, DB never syncs
+### Known billing issues (see ROADMAP AC-3)
+- **`STRIPE_WEBHOOK_SECRET` is empty** — webhooks fail signature verification, DB never syncs after payment (P0 blocker)
 - No guard against duplicate subscriptions in checkout API
 - Scope limits defined in `PLANS` but not enforced at API level
-- No role-based access: all members can reach billing and settings routes
 
 ---
 
@@ -175,21 +215,23 @@ Dashboard layout (`app/(dashboard)/layout.tsx`) redirects to `/pricing` when:
 
 See `ROADMAP.md` for the full phased plan. Key upcoming work:
 
-### Billing hardening (Phase 1 P0–P5)
-- **P0:** Wire `STRIPE_WEBHOOK_SECRET` (run `stripe listen --forward-to localhost:3000/api/webhooks/stripe`)
-- **P0:** Guard duplicate subscriptions in checkout API
-- **P1:** E2E billing test (sign up → trial → checkout → webhook → DB sync)
-- **P2:** Role-based access — `org:admin` gates on `/api/billing/*`, `/api/settings/*`, sidebar settings link
-- **P3:** Seat limits per plan (Solo=1, Studio=5, Agency=unlimited) + Clerk membership webhook enforcement
-- **P4:** Scope usage enforcement — count per billing period, return 402 if over limit, surface meter in `/account`
-- **P5:** In-app plan switching UI (upgrade/downgrade without leaving the app)
+### Admin console (next priority — see ROADMAP 1.4)
+The admin console is a dedicated `/admin` route for `org:admin` users with total tool access and control:
+- **AC-1:** `/admin` route group with layout + breadcrumb nav (Overview · Billing · Team · Usage · Settings)
+- **AC-2:** Billing management page — current plan, inline plan switching with proration preview, invoice history, payment method, cancel with data-retention messaging
+- **AC-3:** Stripe ↔ DB sync guarantee — wire webhook secret, guard duplicate subscriptions, manual sync button, billing event log
+- **AC-4:** Usage dashboard — scopes this period vs limit, seat usage, token cost estimate
+- **AC-5:** Plan switching flows — `/pricing` supports authenticated switching; `POST /api/billing/switch` calls `stripe.subscriptions.update`
+- **AC-6:** Admin access controls — org-wide scope/link/project-type access; activity feed
 
-### Other Phase 1 items
+### Remaining Phase 1
+- **P0:** Wire `STRIPE_WEBHOOK_SECRET` (run `stripe listen --forward-to localhost:3000/api/webhooks/stripe`) — this is the single most critical unresolved issue
+- **P0:** Guard duplicate subscriptions in `/api/billing/checkout`
+- **P4:** Scope usage enforcement — count at `/api/intake/complete`, 402 if over limit, meter in admin console
 - **Marketing website** — `(marketing)` route group; Claude Design prompt in `CLAUDE-DESIGN-PROMPT.md` at repo root
 - `/create-org` redesign to match auth pages
 
-### Phase 3+
-- **Team management / admin console** — Clerk org memberships → invite members, manage roles, org-wide scope history
+### Production infrastructure
 - **Production infrastructure wiring** — upgrade Vercel to Pro, switch Clerk to production keys, wire Inngest, verify Resend domain
 
 ---
@@ -199,8 +241,9 @@ See `ROADMAP.md` for the full phased plan. Key upcoming work:
 See `CHANGELOG.md` for full details.
 
 - 🔴 **Vercel Hobby plan** — 12 serverless function limit blocks every GitHub-triggered deploy. Upgrade team `prabhu-kiran-avulas-projects` to Pro at vercel.com.
-- 🔴 **`STRIPE_WEBHOOK_SECRET` empty** — every Stripe webhook event fails; billing DB never syncs. Run `stripe listen`, paste secret.
+- 🔴 **`STRIPE_WEBHOOK_SECRET` empty** — every Stripe webhook event fails; billing DB never syncs after payment. Run `stripe listen --forward-to localhost:3000/api/webhooks/stripe`, paste secret.
 - 🟡 **Clerk dev keys in prod** — `pk_test_`/`sk_test_` keys in Vercel production env. Switch to `pk_live_`/`sk_live_` before going live.
+- 🟡 **Duplicate subscription risk** — checkout API creates new subscription even if org already has active one. Needs guard before admin console billing UI is shipped.
 - 🟡 **Resend shared domain** — `onboarding@resend.dev` only delivers to verified recipients. Verify custom sender domain for production.
 
 ---

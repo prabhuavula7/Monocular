@@ -6,8 +6,9 @@ import { eq } from 'drizzle-orm'
 import { getStripe, PLANS, type PlanKey } from '@/lib/stripe'
 
 export async function POST(req: NextRequest) {
-  const { orgId } = await auth()
+  const { orgId, orgRole } = await auth()
   if (!orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (orgRole !== 'org:admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { plan, interval = 'monthly' } = await req.json() as { plan: PlanKey; interval?: 'monthly' | 'annual' }
 

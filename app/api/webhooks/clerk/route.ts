@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   if (event.type === 'organization.created') {
     const { id: clerkOrgId, name } = event.data
 
-    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+    const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
     const [agency] = await db
       .insert(agencies)

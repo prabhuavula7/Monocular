@@ -5,6 +5,44 @@ After each coding session, append an entry:
 
 ---
 
+## [2026-04-25] Team management, RBAC, trial hardening
+
+### Trial changes
+- Trial period reduced from 14 days to 7 days (`api/webhooks/clerk/route.ts`)
+- Trial expiry redirect now goes to `/pricing?expired=1` (was just `/pricing`)
+- Pricing page shows orange data-retention banner when `?expired=1`: 60-day data retention warning before permanent deletion
+- Sidebar trial pill now shows dynamic days remaining computed from `trialEndsAt` (was hardcoded "12 days left")
+
+### Team management — new /team page
+- `/team` — full team management page (server component fetches Clerk data, renders client UI)
+- Admin view: member list with inline role selector + remove button; pending invitations with revoke; invite modal (email + role)
+- Member view: read-only member list with role badges
+- Seat limits enforced at invite time: trial=3, solo=1, studio=5, agency=∞; returns 402 with upgrade prompt if at limit
+
+### New API routes
+- `GET /api/team` — lists members + pending invitations (invitations returned only to admins)
+- `POST /api/team` — sends Clerk invitation email; checks seat limits; admin-only
+- `PATCH /api/team/members/[userId]` — change role; admin-only; cannot change own role
+- `DELETE /api/team/members/[userId]` — remove member; admin-only; cannot remove self
+- `DELETE /api/team/invitations/[id]` — revoke pending invitation; admin-only
+
+### Role-based access (P2 — complete)
+- Dashboard layout fetches `orgRole` from `auth()`, passes `isAdmin` to Sidebar
+- Sidebar: Settings nav item hidden for `org:member`; Team link "soon" badge removed (page now live)
+- `/settings/**` entire subtree gated by new `settings/layout.tsx` server component — non-admins redirected to `/dashboard`
+- `/account` page converted to server wrapper + `AccountClient`; admin-only sections (Organisation, Billing, AI Prefs, Intake Defaults) wrapped in `{isAdmin && ...}`; members see only personal profile
+- `PATCH /api/settings` — now returns 403 for non-admins
+- `POST /api/billing/checkout` — now returns 403 for non-admins
+- `POST /api/billing/portal` — now returns 403 for non-admins
+
+### What admins can do that members cannot
+- Access `/settings` and all sub-pages (project types, org config)
+- View and modify billing (Stripe portal, upgrade, plan info)
+- Invite/remove/role-change team members
+- Change org name, AI tone, rate range, intake defaults
+
+---
+
 ## [2026-04-24] Stripe billing integration — Wave 2 complete
 
 ### Pricing tiers renamed and repriced

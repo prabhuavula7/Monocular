@@ -55,22 +55,24 @@
 
 /* ─── Tailwind token registration ─────────────────────────────────────────── */
 @theme inline {
-  --color-canvas:       var(--canvas);
-  --color-panel:        var(--panel);
-  --color-panel-hover:  var(--panel-hover);
-  --color-modal:        var(--modal);
-  --color-line:         var(--line);
-  --color-line-faint:   var(--line-faint);
-  --color-ink:          var(--ink);
-  --color-ink-2:        var(--ink-2);
-  --color-ink-3:        var(--ink-3);
-  --color-orange:       var(--orange);
-  --color-orange-hover: var(--orange-hover);
-  --color-orange-dim:   var(--orange-dim);
-  --color-sidebar:      var(--sidebar-bg);
-  --color-sidebar-line: var(--sidebar-line);
+  --color-canvas:         var(--canvas);
+  --color-panel:          var(--panel);
+  --color-panel-hover:    var(--panel-hover);
+  --color-modal:          var(--modal);
+  --color-line:           var(--line);
+  --color-line-faint:     var(--line-faint);
+  --color-ink:            var(--ink);
+  --color-ink-2:          var(--ink-2);
+  --color-ink-3:          var(--ink-3);
+  --color-orange:         var(--orange);
+  --color-orange-hover:   var(--orange-hover);
+  --color-orange-dim:     var(--orange-dim);
+  --color-orange-border:  var(--orange-border);
+  --color-sidebar:        var(--sidebar-bg);
+  --color-sidebar-line:   var(--sidebar-line);
 
   --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 /* ─── Base ─────────────────────────────────────────────────────────────────── */

@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { PLANS, type PlanKey } from '@/lib/stripe'
-import { Check } from 'lucide-react'
+import { Check, Clock } from 'lucide-react'
 
 const FEATURES: Record<PlanKey, string[]> = {
   solo: [
@@ -35,6 +35,8 @@ export default function PricingPage() {
   const [interval, setInterval] = useState<'monthly' | 'annual'>('monthly')
   const [loading, setLoading] = useState<PlanKey | null>(null)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const trialExpired = searchParams.get('expired') === '1'
 
   async function handleSelect(plan: PlanKey) {
     setLoading(plan)
@@ -61,9 +63,27 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-canvas flex flex-col items-center px-4 py-16">
+
+      {/* Expired trial banner */}
+      {trialExpired && (
+        <div
+          className="w-full max-w-5xl mb-8 rounded-xl px-5 py-4 flex items-start gap-3"
+          style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)' }}
+        >
+          <Clock className="w-4 h-4 text-orange mt-0.5 flex-shrink-0" style={{ color: '#F97316' }} />
+          <div>
+            <p className="text-sm font-semibold" style={{ color: '#F97316' }}>Your trial has ended</p>
+            <p className="text-sm text-ink-2 mt-0.5">
+              Choose a plan to continue. Your data — scopes, intake links, and settings — is retained for
+              <span className="font-medium text-ink"> 60 days</span>. After that, it will be permanently deleted.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="text-center mb-10">
         <h1 className="text-4xl font-bold tracking-tight mb-3">Simple, honest pricing</h1>
-        <p className="text-muted-foreground text-lg">14-day free trial. No credit card required to start.</p>
+        <p className="text-muted-foreground text-lg">7-day free trial. No credit card required to start.</p>
       </div>
 
       <div className="flex items-center gap-2 mb-10 bg-muted rounded-full p-1">

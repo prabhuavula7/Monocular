@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import type { Message } from '@/types'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { Check, ArrowRight } from 'lucide-react'
 
 // Stages are purely for the label — progress bar uses a continuous percentage.
 type ProgressStage = 'starting' | 'exploring' | 'detailing' | 'wrapping' | 'complete'
@@ -276,9 +277,7 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
       <div className="min-h-screen flex items-center justify-center bg-canvas">
         <div className="max-w-md text-center px-6">
           <div className="w-12 h-12 bg-orange-dim border border-orange-border rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <svg className="w-6 h-6 text-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+            <Check className="w-6 h-6 text-orange" />
           </div>
           <h1 className="text-xl font-semibold text-ink mb-2">Thanks — we&apos;re on it.</h1>
           <p className="text-ink-2 text-sm leading-relaxed">
@@ -419,9 +418,7 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
               disabled={isLoading || !inputValue.trim() || !isStarted || readyToComplete}
               className="flex-shrink-0 w-10 h-10 bg-orange text-white rounded-xl flex items-center justify-center hover:bg-orange-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
           <p className="text-[11px] text-ink-3 mt-2 text-center">

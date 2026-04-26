@@ -10,7 +10,8 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { orgId } = await auth()
+  const { orgId, orgRole } = await auth()
+  const isAdmin = orgRole === 'org:admin'
   if (!orgId) redirect('/create-org')
 
   const [agency] = await db
@@ -27,12 +28,18 @@ export default async function DashboardLayout({
   if (agency) {
     const trialExpired = agency.plan === 'trial' && agency.trialEndsAt && agency.trialEndsAt < new Date()
     const canceled = agency.planStatus === 'canceled'
-    if (trialExpired || canceled) redirect('/pricing')
+    if (trialExpired) redirect('/pricing?expired=1')
+    if (canceled) redirect('/pricing')
   }
 
   return (
     <div className="h-screen flex overflow-hidden bg-canvas">
-      <Sidebar agencyName={agency?.name ?? 'Monocular'} />
+      <Sidebar
+        agencyName={agency?.name ?? 'Monocular'}
+        plan={agency?.plan ?? 'trial'}
+        trialEndsAt={agency?.trialEndsAt ?? null}
+        isAdmin={isAdmin}
+      />
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
   )

@@ -31,8 +31,9 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const { orgId } = await auth()
+  const { orgId, orgRole } = await auth()
   if (!orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (orgRole !== 'org:admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
   const parsed = PatchAgencySchema.safeParse(body)

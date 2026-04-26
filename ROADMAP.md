@@ -1,7 +1,7 @@
 # Monocular — Product Roadmap
 
 > Living document. Phases are sequential but items within a phase can run in parallel.
-> Last updated: 2026-04-24
+> Last updated: 2026-04-25
 
 ---
 
@@ -22,8 +22,9 @@
 - [x] `POST /api/billing/portal` — Stripe Billing Portal session
 - [x] `POST /api/webhooks/stripe` — handles `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
 - [x] Stripe customer seeded on org creation (Clerk `organization.created` webhook extended)
-- [x] 14-day free trial — app-managed (`trialEndsAt = now + 14d`), no card required
-- [x] Paywall: dashboard layout redirects to `/pricing` if trial expired or plan canceled
+- [x] 7-day free trial — app-managed (`trialEndsAt = now + 7d`), no card required (reduced from 14d)
+- [x] Paywall: dashboard layout redirects to `/pricing?expired=1` if trial expired, `/pricing` if canceled
+- [x] 60-day data retention banner on expired-trial pricing page
 - [x] `/pricing` public page: monthly/annual toggle, three-column plan cards, Stripe Checkout flow
 - [x] `/account` billing section: plan name, status badge, days-remaining, Manage billing / Upgrade CTA
 
@@ -37,17 +38,20 @@
 - [ ] Verify `invoice.payment_failed` path sets `planStatus: 'past_due'` in DB
 - [ ] Verify trial expiry redirects to `/pricing` correctly (can fast-forward by setting `trialEndsAt` to a past date in DB)
 
-#### P2 — Role-based access `[PRE-LAUNCH]`
-- [ ] Read Clerk `orgRole` (`org:admin` / `org:member`) in dashboard layout, pass to relevant components
-- [ ] Gate `/account` billing section to `org:admin` only — members see a "Contact your admin" placeholder
-- [ ] Gate `/settings` (project types) to `org:admin` only
-- [ ] Sidebar: hide Settings nav link for `org:member`
-- [ ] API: `/api/billing/*` and `/api/settings/*` return 403 if caller is not `org:admin`
+#### P2 — Role-based access ✅ `[DONE 2026-04-25]`
+- [x] Read Clerk `orgRole` (`org:admin` / `org:member`) in dashboard layout, pass to Sidebar
+- [x] Gate `/account` org/billing/AI sections to `org:admin` — members see personal profile only
+- [x] Gate entire `/settings/**` subtree to `org:admin` via `settings/layout.tsx` server guard
+- [x] Sidebar: Settings nav link hidden for `org:member`; Team link live (no longer "soon")
+- [x] API: `PATCH /api/settings`, `POST /api/billing/checkout`, `POST /api/billing/portal` return 403 for non-admins
 
-#### P3 — Seat limits `[PRE-LAUNCH]`
-- [ ] Add `seatLimit` to `PLANS`: Solo = 1, Studio = 5, Agency = unlimited
-- [ ] Clerk webhook on `organizationMembership.created` → check current member count vs plan seat limit → return error if over limit
-- [ ] Soft warning in `/account` if near seat limit, hard block when at limit with upgrade CTA
+#### P3 — Team management ✅ `[DONE 2026-04-25]`
+- [x] `/team` page: member list with role, joined date; pending invitations with revoke
+- [x] Invite by email via Clerk organization invitations (email sent by Clerk)
+- [x] Role change (admin ↔ member) and member removal; guards prevent self-action
+- [x] Seat limits enforced at invite time (trial=3, solo=1, studio=5, agency=∞)
+- [ ] Seat limit warning in UI when near limit — currently just blocks at limit (upgrade CTA shown)
+- [ ] Clerk webhook on `organizationMembership.created` for real-time seat enforcement (currently only at invite time)
 
 #### P4 — Scope usage enforcement `[PRE-LAUNCH]`
 - [ ] Before creating a scope (in `/api/intake/complete`), count scopes for the org since the billing period start
@@ -55,11 +59,60 @@
 - [ ] Surface scope usage meter on `/account` billing section: "X of Y scopes used this month"
 - [ ] Upgrade CTA shown inline when >80% of limit used
 
-#### P5 — In-app plan switching `[POST-MVP]`
-- [ ] Upgrade/downgrade UI in `/account` billing section — show all plans with current highlighted
-- [ ] Call `stripe.subscriptions.update` with `items[0][price]` and `proration_behavior: 'create_prorations'`
-- [ ] Immediate plan change reflected in DB via webhook; no page reload needed
-- [ ] Downgrade confirmation modal: shows what features/scopes will be lost
+#### P4 — Scope usage enforcement `[PRE-LAUNCH]`
+- [ ] Before creating a scope (in `/api/intake/complete`), count scopes for the org since the billing period start
+- [ ] If count ≥ `PLANS[plan].scopeLimit`, return 402 with a usage-limit error
+- [ ] Surface scope usage meter on `/account` billing section: "X of Y scopes used this month"
+- [ ] Upgrade CTA shown inline when >80% of limit used
+
+---
+
+### 1.4 Admin Console `[NEXT PRIORITY]`
+*Goal: admins have total visibility and control over billing, team, and usage from a single place. No need to leave the app to manage anything Stripe-related.*
+
+#### AC-1 — Admin Console shell
+- [ ] `/admin` route group — `app/(dashboard)/admin/` with its own layout
+- [ ] Admin layout: breadcrumb nav, section links (Overview · Billing · Team · Usage · Settings)
+- [ ] Gate entire `/admin/**` subtree to `org:admin`; redirect members to `/dashboard`
+- [ ] Sidebar: add Admin link for `org:admin` users (between Team and Settings)
+
+#### AC-2 — Billing management UI
+- [ ] Current plan card: plan name, status badge (trialing/active/past_due/canceled), renewal date, next invoice amount
+- [ ] Inline plan switching: show all three plans, current highlighted, upgrade/downgrade buttons
+  - Upgrade: call `stripe.subscriptions.update` with new price + `proration_behavior: 'create_prorations'`
+  - Downgrade: confirmation modal listing what changes (scope limit, seat limit); effective at period end
+  - Immediate plan change reflected via Stripe webhook → DB sync
+- [ ] Invoice history table: date, amount, status (paid/open/void), PDF download link (Stripe-hosted)
+- [ ] Payment method display: last 4 digits, expiry, brand icon; "Update card" → Stripe portal
+- [ ] Danger zone: cancel subscription (with "data retained 60 days" messaging)
+
+#### AC-3 — Stripe ↔ DB sync guarantee
+- [ ] Wire `STRIPE_WEBHOOK_SECRET` — this is P0 and blocks everything else in billing
+- [ ] Guard duplicate subscriptions in `/api/billing/checkout` — if `stripeSubscriptionId` is set and sub is `active`, redirect to portal
+- [ ] Add `POST /api/billing/sync` admin-only endpoint — manually re-pulls subscription state from Stripe API and writes to DB; shown as "Sync with Stripe" button in admin console
+- [ ] Stripe webhook handler extended: log all events to a `billingEvents` table (event type, payload, processed_at) for debugging and audit trail
+- [ ] Webhook retry safety: make all handlers idempotent (check `stripeSubscriptionId` before overwriting)
+
+#### AC-4 — Usage dashboard
+- [ ] Scopes this billing period: count vs plan limit, visual progress bar
+- [ ] Scopes all-time: total created, won, lost, sent, in-review
+- [ ] Team seats: used vs plan limit
+- [ ] Token usage (if tracked): AI cost per month estimate
+- [ ] All metrics refreshed server-side on page load (no client polling needed)
+
+#### AC-5 — Plan switching flows (complete)
+- [ ] `/pricing` upgraded to support authenticated plan switching (not just first-time checkout)
+  - If org already has active subscription, show "Current plan" badge + "Switch" button
+  - "Switch" calls a new `POST /api/billing/switch` that calls `stripe.subscriptions.update`
+- [ ] Proration preview: show estimated credit/charge before confirming switch
+- [ ] Post-switch: webhook updates DB; admin sees new plan immediately in admin console
+
+#### AC-6 — Admin access controls (total access)
+- [ ] Admins can access all scopes in the org (currently scopes are user-created only — confirm org-scoped)
+- [ ] Admins can delete any scope (members can only delete their own)
+- [ ] Admins can deprecate/delete any intake link
+- [ ] Admins can edit all project types
+- [ ] Admin console shows org-wide scope activity feed (last 20 events: created, generated, sent, won, lost)
 
 ---
 
@@ -203,16 +256,16 @@
 
 ## Immediate Next Actions
 
-### This session — billing hardening
-1. **P0:** Add `STRIPE_WEBHOOK_SECRET` — run `stripe listen`, paste the secret into `.env.local`
-2. **P0:** Guard duplicate subscriptions in `/api/billing/checkout`
-3. **P1:** Full E2E billing test — test card `4242 4242 4242 4242` through checkout, verify DB syncs
-4. **P2:** Role-based access — gate billing/settings to `org:admin`
+### Admin console (next session)
+1. **AC-3 P0:** Wire `STRIPE_WEBHOOK_SECRET` — run `stripe listen --forward-to localhost:3000/api/webhooks/stripe`, paste secret into `.env.local` and Vercel env
+2. **AC-3 P0:** Guard duplicate subscriptions in `/api/billing/checkout` — check `stripeSubscriptionId` before creating new checkout session
+3. **AC-1:** Scaffold `/admin` route group with layout, breadcrumb nav, admin-only gate
+4. **AC-2:** Billing management page — current plan, inline plan switching, invoice history
+5. **P4:** Scope usage enforcement — count at `/api/intake/complete`, surface meter in admin console
 
-### Next session
-5. **P3:** Seat limits — add `seatLimit` to PLANS, wire Clerk membership webhook
-6. **P4:** Scope usage meter — count + enforce at API level, surface in `/account`
-7. **Phase 2:** Scaffold `(marketing)` route group, `/create-org` redesign
+### After admin console
+6. **P1 E2E test:** Full billing flow with test card `4242 4242 4242 4242` — checkout → webhook → DB sync → dashboard unlocked
+7. **Phase 2:** Marketing website scaffold, `/create-org` redesign
 
 ---
 
@@ -221,11 +274,10 @@
 | Severity | Issue | Fix |
 |---|---|---|
 | 🔴 | **Vercel Hobby plan** — 12-function cap blocks all GitHub-triggered deploys | Upgrade to Pro at vercel.com |
-| 🔴 | **`STRIPE_WEBHOOK_SECRET` empty** — webhooks never verify, DB never syncs | `stripe listen`, paste secret |
+| 🔴 | **`STRIPE_WEBHOOK_SECRET` empty** — webhooks never verify, DB never syncs after payment | `stripe listen`, paste secret |
 | 🟡 | **Clerk dev keys in Vercel prod** — auth breaks on non-localhost | Switch to `pk_live_`/`sk_live_` in Vercel env |
-| 🟡 | **Duplicate subscription risk** — checkout creates a 2nd sub if called again | Guard in checkout API |
-| 🟡 | **Scope limits not enforced** — `scopeLimit` defined in PLANS but never checked | P4 item above |
-| 🟡 | **No role-based access** — all users see billing and settings | P2 item above |
+| 🟡 | **Duplicate subscription risk** — checkout creates a 2nd sub if org already subscribed | AC-3 guard in checkout API |
+| 🟡 | **Scope limits not enforced** — `scopeLimit` defined in PLANS but never checked at intake | P4 above |
 | 🟡 | **Resend shared domain** — `onboarding@resend.dev` limited to verified recipients | Verify custom sender domain |
 
 ---
