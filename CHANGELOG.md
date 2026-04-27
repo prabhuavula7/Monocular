@@ -5,6 +5,47 @@ After each coding session, append an entry:
 
 ---
 
+## [2026-04-26] Plan restructure + feature gating + dark theme contrast
+
+### Pricing overhaul
+- Plans repriced and restructured for upgrade pressure (Option B):
+  - Solo: $49/mo · $490/yr — 20 scopes/mo, 1 seat (scope limit reduced from 40)
+  - Studio: $109/mo · $1,090/yr — 75 scopes/mo, 3 seats (was $99, 150 scopes, 5 seats)
+  - Agency: $219/mo · $2,190/yr — unlimited scopes + seats (was $179)
+- New Stripe prices created for Studio and Agency; old prices archived
+- `lib/stripe.ts` — added `seatLimit` and `features` object to each plan entry
+- Exported `SEAT_LIMITS` constant and `planHasFeature()` helper from `lib/stripe.ts`
+
+### Feature gating (Studio/Agency only)
+- Review links (`POST /api/scopes/[id]/review-link`) — returns 402 for Solo/trial
+- Email delivery (`POST /api/scopes/[id]/send`) — returns 402 for Solo/trial
+- Scope editor: Share and Send buttons show lock icon + link to `/pricing` for gated plans
+- Pricing page updated with ✓/✗ feature rows per plan
+
+### Seat limits updated
+- Studio: 5 → 3 seats (API route + TeamClient both updated)
+- `SEAT_LIMITS` in `api/team/route.ts` and `TeamClient.tsx` synced to new values
+
+### UI: dark theme contrast fix
+- `--ink-2` dark: `#71717a` → `#a1a1aa` (zinc-400, ~6.3:1 contrast — was failing WCAG AA)
+- `--ink-3` dark: `#3f3f46` → `#71717a` (zinc-500, more readable placeholder text)
+- `--ink-2` light: `#52525b` → `#3f3f46` (zinc-700, stronger secondary text)
+- `--ink-3` light: `#a1a1aa` → `#71717a` (zinc-500, was ~2.4:1 — now passes AA for large text)
+
+### Stripe webhook
+- Added `invoice.payment_succeeded` handler — resets `planStatus` to `active` when Stripe auto-retries a failed payment and succeeds
+
+### Test tooling
+- `scripts/test-trial-expiry.ts` — safely expires and restores trial state for any org (snapshots original plan before expiry, restores on `--reset`)
+- `scripts/check-agency.ts` — quick DB query to inspect current agency plan state
+- `scripts/update-stripe-prices.ts` — creates new prices, archives old ones, prints env vars
+
+### P1 verified
+- Trial expiry redirect confirmed: `/dashboard` → `/pricing?expired=1` when `trialEndsAt` past
+- Full billing E2E verified across all webhook paths
+
+---
+
 ## [2026-04-26] P0 billing fixes + E2E test
 
 ### P0 fixes

@@ -5,6 +5,7 @@ import { agencies, intakeLinks, scopes } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { generateAndUploadPdf } from '@/lib/pdf-utils'
 import { getResend } from '@/lib/resend'
+import { planHasFeature } from '@/lib/stripe'
 
 export async function POST(
   _req: NextRequest,
@@ -22,6 +23,13 @@ export async function POST(
     .limit(1)
 
   if (!agency) return NextResponse.json({ error: 'Agency not found' }, { status: 404 })
+
+  if (!planHasFeature(agency.plan, 'emailDelivery')) {
+    return NextResponse.json(
+      { error: 'Email delivery requires Studio or Agency plan.', upgrade: true },
+      { status: 402 }
+    )
+  }
 
   const [scope] = await db
     .select()

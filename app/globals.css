@@ -16,8 +16,8 @@
   --line-faint:      #f0f0f1;   /* ultra-subtle divider                      */
 
   --ink:             #09090b;   /* primary text                              */
-  --ink-2:           #52525b;   /* secondary text                            */
-  --ink-3:           #a1a1aa;   /* tertiary / placeholder                    */
+  --ink-2:           #3f3f46;   /* secondary text                            */
+  --ink-3:           #71717a;   /* tertiary / placeholder                    */
 
   --orange:          #F97316;
   --orange-hover:    #EA580C;
@@ -41,8 +41,8 @@
   --line-faint:      #141414;   /* ultra-subtle divider                      */
 
   --ink:             #fafafa;   /* primary text                              */
-  --ink-2:           #71717a;   /* secondary text                            */
-  --ink-3:           #3f3f46;   /* tertiary / placeholder                    */
+  --ink-2:           #a1a1aa;   /* secondary text                            */
+  --ink-3:           #71717a;   /* tertiary / placeholder                    */
 
   --orange:          #F97316;
   --orange-hover:    #FB923C;

@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm'
 const SEAT_LIMITS: Record<string, number> = {
   trial:  3,
   solo:   1,
-  studio: 5,
+  studio: 3,
   agency: Infinity,
 }
 

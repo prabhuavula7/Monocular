@@ -108,6 +108,22 @@ export async function POST(req: Request) {
       }).where(eq(agencies.stripeCustomerId, customerId))
       break
     }
+
+    case 'invoice.payment_succeeded': {
+      // Stripe retried a past_due invoice and it went through — restore active status.
+      // customer.subscription.updated also fires in this case, but this is explicit insurance.
+      const invoice = event.data.object as Stripe.Invoice
+      const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
+      if (!customerId) break
+      // Only act on subscription invoices (not one-off invoices)
+      if (!invoice.subscription) break
+
+      await db.update(agencies).set({
+        planStatus: 'active',
+        updatedAt: new Date(),
+      }).where(eq(agencies.stripeCustomerId, customerId))
+      break
+    }
   }
 
   return NextResponse.json({ received: true })

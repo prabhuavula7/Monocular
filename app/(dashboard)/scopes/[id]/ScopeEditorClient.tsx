@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Download, CheckCircle, Plus, X, ChevronUp, ChevronDown, AlertCircle, Send, Link } from 'lucide-react'
+import { ArrowLeft, Download, CheckCircle, Plus, X, ChevronUp, ChevronDown, AlertCircle, Send, Link, Lock } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import type { GeneratedScope, Message, RiskFlag, Deliverable, Milestone } from '@/types'
 
@@ -198,6 +198,7 @@ interface Version {
 interface Props {
   scope: Scope
   agencyName: string
+  plan: string
   versions?: Version[]
 }
 
@@ -381,7 +382,9 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ScopeEditorClient({ scope, versions = [] }: Props) {
+export default function ScopeEditorClient({ scope, plan, versions = [] }: Props) {
+  const canShare = plan === 'studio' || plan === 'agency'
+  const canSend  = plan === 'studio' || plan === 'agency'
   const router = useRouter()
   const { save, saveState } = useAutoSave(scope.id)
 
@@ -686,37 +689,53 @@ export default function ScopeEditorClient({ scope, versions = [] }: Props) {
             ))}
           </select>
 
-          <button
-            onClick={handleShare}
-            disabled={isSharing}
-            title="Copy client review link"
-            className="flex items-center gap-1.5 border border-line text-ink-2 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-panel-hover disabled:opacity-40 transition-colors"
-          >
-            {shareCopied ? (
-              <><CheckCircle className="w-3 h-3 text-green-500" /> Copied</>
-            ) : (
-              <><Link className="w-3 h-3" />{isSharing ? 'Generating…' : 'Share'}</>
-            )}
-          </button>
+          {canShare ? (
+            <button
+              onClick={handleShare}
+              disabled={isSharing}
+              title="Copy client review link"
+              className="flex items-center gap-1.5 border border-line text-ink-2 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-panel-hover disabled:opacity-40 transition-colors"
+            >
+              {shareCopied ? (
+                <><CheckCircle className="w-3 h-3 text-green-500" /> Copied</>
+              ) : (
+                <><Link className="w-3 h-3" />{isSharing ? 'Generating…' : 'Share'}</>
+              )}
+            </button>
+          ) : (
+            <a
+              href="/pricing"
+              title="Upgrade to Studio to unlock review links"
+              className="flex items-center gap-1.5 border border-line text-ink-3 text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer hover:bg-panel-hover transition-colors"
+            >
+              <Lock className="w-3 h-3" />
+              Share
+            </a>
+          )}
 
-          <button
-            onClick={handleSendToClient}
-            disabled={isSending || !clientEmail}
-            title={!clientEmail ? 'No client email on file' : undefined}
-            className="flex items-center gap-1.5 bg-orange-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:opacity-80 disabled:opacity-40 transition-opacity"
-          >
-            {sendDone ? (
-              <>
-                <CheckCircle className="w-3 h-3" />
-                Sent
-              </>
-            ) : (
-              <>
-                <Send className="w-3 h-3" />
-                {isSending ? 'Sending…' : 'Send to client'}
-              </>
-            )}
-          </button>
+          {canSend ? (
+            <button
+              onClick={handleSendToClient}
+              disabled={isSending || !clientEmail}
+              title={!clientEmail ? 'No client email on file' : undefined}
+              className="flex items-center gap-1.5 bg-orange text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:opacity-80 disabled:opacity-40 transition-opacity"
+            >
+              {sendDone ? (
+                <><CheckCircle className="w-3 h-3" /> Sent</>
+              ) : (
+                <><Send className="w-3 h-3" />{isSending ? 'Sending…' : 'Send to client'}</>
+              )}
+            </button>
+          ) : (
+            <a
+              href="/pricing"
+              title="Upgrade to Studio to unlock email delivery"
+              className="flex items-center gap-1.5 bg-orange/30 text-white/60 text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer hover:bg-orange/40 transition-colors"
+            >
+              <Lock className="w-3 h-3" />
+              Send to client
+            </a>
+          )}
 
           <button
             onClick={handleExportPdf}

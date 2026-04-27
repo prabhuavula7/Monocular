@@ -1,26 +1,23 @@
 # Monocular
 
-**AI-powered project scoping for digital agencies.**
+**AI-powered project scoping for service businesses.**
 
-Monocular turns a client conversation into a structured, ready-to-send project scope — automatically. Agencies send an intake link, the client chats with an AI that asks the right questions for their industry, and a complete scope document (deliverables, milestones, pricing estimate, risk flags) is waiting in the dashboard when they're done.
+Monocular turns a client conversation into a structured, ready-to-send project scope — automatically. Send an intake link, the client chats with an AI that asks the right questions, and a complete scope document lands in your dashboard. Edit inline, export PDF, send to client.
 
 ---
 
-## How it works
+## Plans
 
-1. **Create an intake link** — pick a project template (Web Dev, Mobile App, Brand Identity, E-commerce, SEO, Social Media, Video, UX Redesign, SaaS Build, Digital Marketing, or a general open intake), optionally pre-fill the client name and email.
+| | Solo | Studio | Agency |
+|---|---|---|---|
+| **Price** | $49/mo | $109/mo | $219/mo |
+| **Scopes/mo** | 20 | 75 | Unlimited |
+| **Seats** | 1 | 3 | Unlimited |
+| **Review links** | — | ✓ | ✓ |
+| **Email delivery** | — | ✓ | ✓ |
+| **Priority support** | — | — | ✓ |
 
-2. **Send the link to your client** — the client opens a chat interface in their browser. No login required. An AI (Claude) conducts the intake conversation, probing for all the information relevant to that project type.
-
-3. **Scope is generated automatically** — when the client marks the chat as complete, a background job extracts structured data from the transcript and generates a full scope document:
-   - Executive summary
-   - Deliverables list with phases
-   - Milestone timeline
-   - Pricing estimate range
-   - Risk flags
-   - Assumptions and out-of-scope items
-
-4. **Review, edit, and export** — the scope appears in your dashboard. Click in to edit any field inline (auto-saved). Change the pipeline status (Draft → In Review → Sent → Won/Lost). Export to PDF when it's ready to send.
+Annual billing available (2 months free). 7-day free trial, no card required.
 
 ---
 
@@ -32,10 +29,10 @@ Monocular turns a client conversation into a structured, ready-to-send project s
 | Auth & orgs | Clerk v7 — multi-tenant via Organizations |
 | Database | Supabase Postgres + Drizzle ORM |
 | File storage | Supabase Storage (`scope-pdfs` bucket) |
-| AI | Anthropic Claude (intake chat + scope generation) |
+| AI | Anthropic Claude (Haiku 4.5 intake · Sonnet 4.6 generation) |
 | Background jobs | Inngest |
-| Email | Resend (`onboarding@resend.dev` shared domain in dev) |
-| Billing | Stripe — subscriptions, checkout, billing portal, webhooks |
+| Email | Resend |
+| Billing | Stripe — subscriptions, webhooks, billing portal |
 | PDF | @react-pdf/renderer |
 | Deployment | Vercel |
 
@@ -46,22 +43,24 @@ Monocular turns a client conversation into a structured, ready-to-send project s
 ### Prerequisites
 
 - Node.js 20+
-- A Supabase project
+- Supabase project
 - Clerk account with Organizations enabled
 - Anthropic API key
-- Inngest account (or run `npx inngest-cli@latest dev` locally)
+- Stripe account (test mode)
+- Inngest account (or `npx inngest-cli@latest dev`)
 
 ### Setup
 
 ```bash
 cd app
 npm install
+cp .env.local.example .env.local   # fill in all values
 ```
 
-Copy `.env.local.example` to `.env.local` and fill in all values:
+### Environment variables
 
 ```env
-DATABASE_URL=postgresql://...           # Supabase direct connection URL
+DATABASE_URL=postgresql://...
 NEXT_PUBLIC_SUPABASE_URL=https://...
 SUPABASE_SERVICE_ROLE_KEY=...
 
@@ -72,16 +71,13 @@ CLERK_WEBHOOK_SECRET=whsec_...
 ANTHROPIC_API_KEY=sk-ant-...
 
 RESEND_API_KEY=re_...
-RESEND_FROM_EMAIL=Monocular <onboarding@resend.dev>  # or your verified sender
+RESEND_FROM_EMAIL=Monocular <onboarding@resend.dev>
 
 INNGEST_EVENT_KEY=...
 INNGEST_SIGNING_KEY=...
 
-# Stripe
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...         # from: stripe listen --forward-to localhost:3000/api/webhooks/stripe
-
+STRIPE_WEBHOOK_SECRET=whsec_...     # from: stripe listen --forward-to localhost:3000/api/webhooks/stripe
 STRIPE_PRICE_SOLO=price_...
 STRIPE_PRICE_SOLO_ANNUAL=price_...
 STRIPE_PRICE_STUDIO=price_...
@@ -95,34 +91,31 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ### Database
 
 ```bash
-npm run db:push       # push schema to Supabase
+npm run db:push
 ```
 
 ### Clerk webhook (local)
 
-Point Clerk's webhook (event: `organization.created`) to your ngrok URL:
-
+Point Clerk's `organization.created` webhook to:
 ```
-https://<your-ngrok-url>/api/webhooks/clerk
+https://<ngrok-url>/api/webhooks/clerk
 ```
 
-The webhook seeds an agency row and default project types when you create your first Clerk organization.
+This seeds the agency row and default project types on org creation.
 
 ### Stripe (local)
-
-Install the Stripe CLI, then run the webhook forwarder in a separate terminal:
 
 ```bash
 stripe listen --forward-to localhost:3000/api/webhooks/stripe
 ```
 
-Copy the printed `whsec_...` secret into `.env.local` as `STRIPE_WEBHOOK_SECRET`. Without this, billing DB sync won't work.
+Copy the printed `whsec_...` into `.env.local` as `STRIPE_WEBHOOK_SECRET`. Without this, billing DB sync won't work.
 
-Use test card `4242 4242 4242 4242` (any future expiry, any CVC) for checkout testing.
+Test card: `4242 4242 4242 4242` (any future expiry, any CVC).
 
 ### Supabase Storage
 
-Create a public bucket named `scope-pdfs` in the Supabase Dashboard → Storage.
+Create a public bucket named `scope-pdfs` in Supabase Dashboard → Storage.
 
 ### Run
 
@@ -130,22 +123,46 @@ Create a public bucket named `scope-pdfs` in the Supabase Dashboard → Storage.
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), sign up, create an organization, and you'll land on the dashboard.
+Sign up → create org → dashboard. The Clerk webhook fires on org creation and seeds everything.
 
 ---
 
 ## First run walkthrough
 
 1. Sign up at `/sign-up`
-2. Create an organization at `/create-org` — this fires the Clerk webhook and seeds the DB
-3. You land on `/dashboard` — click **New Intake Link**
-4. Pick a template, optionally add client details, copy the generated link
-5. Open the link in a new tab (or incognito) — complete the intake chat as if you were the client
-6. Return to the dashboard — scope should appear within ~30 seconds (Inngest job)
-7. Click the scope to review, edit fields inline, change status, and export to PDF
+2. Create org at `/create-org` — fires Clerk webhook, seeds DB
+3. Dashboard → **New Intake Link** → pick template → copy link
+4. Open link in incognito, complete intake as the client
+5. Return to dashboard — scope appears within ~30 seconds
+6. Open scope → edit inline → export PDF
+
+---
+
+## Role model
+
+| | `org:admin` | `org:member` |
+|---|---|---|
+| Dashboard, Scopes, Intake | ✓ | ✓ |
+| Team page | ✓ | ✓ (read-only) |
+| Billing & plan management | ✓ | — |
+| Settings (project types, org config) | ✓ | — |
+| Invite / remove members | ✓ | — |
+
+---
+
+## Scripts
+
+| Script | Purpose |
+|---|---|
+| `npx tsx scripts/test-trial-expiry.ts` | Force trial expiry for testing (saves snapshot) |
+| `npx tsx scripts/test-trial-expiry.ts --reset` | Restore from snapshot |
+| `npx tsx scripts/check-agency.ts` | Inspect current agency DB state |
+| `npx tsx scripts/update-stripe-prices.ts` | Create new Stripe prices, archive old |
 
 ---
 
 ## Project structure
 
-See [`AGENTS.md`](./AGENTS.md) for a full file-by-file breakdown, known broken items, and development conventions.
+See [`AGENTS.md`](./AGENTS.md) for file-by-file breakdown, dev conventions, and known blockers.
+See [`ROADMAP.md`](./ROADMAP.md) for phased feature plan.
+See [`CHANGELOG.md`](./CHANGELOG.md) for session-by-session history.

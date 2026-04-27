@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { agencies, scopes } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
+import { planHasFeature } from '@/lib/stripe'
 
 export async function POST(
   _req: NextRequest,
@@ -21,6 +22,13 @@ export async function POST(
     .limit(1)
 
   if (!agency) return NextResponse.json({ error: 'Agency not found' }, { status: 404 })
+
+  if (!planHasFeature(agency.plan, 'reviewLinks')) {
+    return NextResponse.json(
+      { error: 'Review links require Studio or Agency plan.', upgrade: true },
+      { status: 402 }
+    )
+  }
 
   const [scope] = await db
     .select({ id: scopes.id, agencyId: scopes.agencyId, reviewToken: scopes.reviewToken })

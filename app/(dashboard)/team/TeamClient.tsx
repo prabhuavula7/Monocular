@@ -30,7 +30,7 @@ interface TeamData {
 }
 
 const SEAT_LIMITS: Record<string, number> = {
-  trial: 3, solo: 1, studio: 5, agency: Infinity,
+  trial: 3, solo: 1, studio: 3, agency: Infinity,
 }
 
 function rolePill(role: string) {

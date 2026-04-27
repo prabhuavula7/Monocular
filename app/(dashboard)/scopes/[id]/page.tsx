@@ -51,6 +51,7 @@ export default async function ScopePage({
         generatedScope: scope.generatedScope as GeneratedScope | null,
       }}
       agencyName={agency.name}
+      plan={agency.plan}
       versions={versions}
     />
   )

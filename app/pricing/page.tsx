@@ -3,27 +3,35 @@
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { PLANS, type PlanKey } from '@/lib/stripe'
-import { Check, Clock } from 'lucide-react'
+import { Check, X, Clock } from 'lucide-react'
 
-const FEATURES: Record<PlanKey, string[]> = {
+type Feature = { text: string; included: boolean }
+
+const FEATURES: Record<PlanKey, Feature[]> = {
   solo: [
-    '40 scopes per month',
-    'AI-powered intake chat',
-    'Scope generation & export',
-    'Email scope to clients',
-    'Client review links',
+    { text: '20 scopes per month',            included: true  },
+    { text: 'AI-powered intake chat',          included: true  },
+    { text: 'Scope editor & PDF export',       included: true  },
+    { text: 'Custom project types',            included: true  },
+    { text: 'Client review links',             included: false },
+    { text: 'Email scope to client',           included: false },
+    { text: 'Intake link customization',       included: false },
+    { text: 'Priority support',                included: false },
   ],
   studio: [
-    '150 scopes per month',
-    'Everything in Solo',
-    'Custom project types',
-    'AI extraction schemas',
-    'Milestone patterns & risk flags',
+    { text: '75 scopes per month',             included: true  },
+    { text: 'Everything in Solo',              included: true  },
+    { text: 'Up to 3 seats',                   included: true  },
+    { text: 'Client review links',             included: true  },
+    { text: 'Email scope to client',           included: true  },
+    { text: 'Intake link customization',       included: true  },
+    { text: 'Priority support',                included: false },
   ],
   agency: [
-    'Unlimited scopes',
-    'Everything in Studio',
-    'Priority support',
+    { text: 'Unlimited scopes',                included: true  },
+    { text: 'Everything in Studio',            included: true  },
+    { text: 'Unlimited seats',                 included: true  },
+    { text: 'Priority support',                included: true  },
   ],
 }
 
@@ -70,7 +78,7 @@ export default function PricingPage() {
           className="w-full max-w-5xl mb-8 rounded-xl px-5 py-4 flex items-start gap-3"
           style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)' }}
         >
-          <Clock className="w-4 h-4 text-orange mt-0.5 flex-shrink-0" style={{ color: '#F97316' }} />
+          <Clock className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#F97316' }} />
           <div>
             <p className="text-sm font-semibold" style={{ color: '#F97316' }}>Your trial has ended</p>
             <p className="text-sm text-ink-2 mt-0.5">
@@ -83,14 +91,14 @@ export default function PricingPage() {
 
       <div className="text-center mb-10">
         <h1 className="text-4xl font-bold tracking-tight mb-3">Simple, honest pricing</h1>
-        <p className="text-muted-foreground text-lg">7-day free trial. No credit card required to start.</p>
+        <p className="text-ink-2 text-lg">7-day free trial. No credit card required to start.</p>
       </div>
 
-      <div className="flex items-center gap-2 mb-10 bg-muted rounded-full p-1">
+      <div className="flex items-center gap-2 mb-10 bg-panel border border-line rounded-full p-1">
         <button
           onClick={() => setInterval('monthly')}
           className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            interval === 'monthly' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'
+            interval === 'monthly' ? 'bg-canvas shadow text-ink' : 'text-ink-2'
           }`}
         >
           Monthly
@@ -98,10 +106,10 @@ export default function PricingPage() {
         <button
           onClick={() => setInterval('annual')}
           className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            interval === 'annual' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'
+            interval === 'annual' ? 'bg-canvas shadow text-ink' : 'text-ink-2'
           }`}
         >
-          Annual <span className="text-orange-500 font-semibold">2 months free</span>
+          Annual <span className="text-orange font-semibold">2 months free</span>
         </button>
       </div>
 
@@ -115,29 +123,27 @@ export default function PricingPage() {
           return (
             <div
               key={key}
-              className={`rounded-2xl border p-8 flex flex-col gap-6 ${
-                isMiddle
-                  ? 'border-orange-500 shadow-lg shadow-orange-500/10 bg-card'
-                  : 'border-border bg-card'
+              className={`rounded-2xl border p-8 flex flex-col gap-6 bg-panel ${
+                isMiddle ? 'border-orange shadow-lg shadow-orange/10' : 'border-line'
               }`}
             >
               {isMiddle && (
-                <div className="text-xs font-semibold text-orange-500 uppercase tracking-wide">Most popular</div>
+                <div className="text-xs font-semibold text-orange uppercase tracking-wide">Most popular</div>
               )}
               <div>
-                <h2 className="text-2xl font-bold">{plan.name}</h2>
-                <p className="text-muted-foreground text-sm mt-1">{plan.description}</p>
+                <h2 className="text-2xl font-bold text-ink">{plan.name}</h2>
+                <p className="text-ink-2 text-sm mt-1">{plan.description}</p>
               </div>
 
               <div>
                 <div className="flex items-end gap-1">
-                  <span className="text-4xl font-bold">{formatPrice(price)}</span>
-                  <span className="text-muted-foreground mb-1">
+                  <span className="text-4xl font-bold text-ink">{formatPrice(price)}</span>
+                  <span className="text-ink-2 mb-1">
                     {interval === 'annual' ? '/yr' : '/mo'}
                   </span>
                 </div>
                 {monthlyEquivalent && (
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-ink-2 mt-1">
                     {formatPrice(monthlyEquivalent)}/mo billed annually
                   </p>
                 )}
@@ -148,8 +154,8 @@ export default function PricingPage() {
                 disabled={loading !== null}
                 className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 ${
                   isMiddle
-                    ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                    : 'border border-border hover:bg-muted text-foreground'
+                    ? 'bg-orange hover:bg-orange-hover text-white'
+                    : 'border border-line hover:bg-panel-hover text-ink'
                 }`}
               >
                 {loading === key ? 'Redirecting...' : 'Get started'}
@@ -157,9 +163,15 @@ export default function PricingPage() {
 
               <ul className="space-y-3">
                 {FEATURES[key].map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 text-sm">
-                    <Check className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
-                    <span>{feature}</span>
+                  <li key={feature.text} className="flex items-start gap-2 text-sm">
+                    {feature.included ? (
+                      <Check className="w-4 h-4 text-orange mt-0.5 shrink-0" />
+                    ) : (
+                      <X className="w-4 h-4 text-ink-3 mt-0.5 shrink-0" />
+                    )}
+                    <span className={feature.included ? 'text-ink' : 'text-ink-3'}>
+                      {feature.text}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -168,9 +180,9 @@ export default function PricingPage() {
         })}
       </div>
 
-      <p className="mt-12 text-sm text-muted-foreground">
+      <p className="mt-12 text-sm text-ink-2">
         Already have an account?{' '}
-        <a href="/sign-in" className="text-orange-500 hover:underline">
+        <a href="/sign-in" className="text-orange hover:underline">
           Sign in
         </a>
       </p>
