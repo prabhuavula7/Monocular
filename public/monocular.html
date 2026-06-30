@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monocular — The Scoping Engine</title>
+<link rel="icon" href="monocular-lens2.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── TOKENS ── */
+:root {
+  --orange:       #F97316;
+  --orange-h:     #EA580C;
+  --orange-s:     #FB923C;
+  --orange-dim:   rgba(249,115,22,0.08);
+  --orange-ring:  rgba(249,115,22,0.22);
+  --radius:       14px;
+  --radius-sm:    9px;
+  --font:         'Plus Jakarta Sans', system-ui, sans-serif;
+  --mono:         'JetBrains Mono', monospace;
+  --trans:        0.18s ease;
+}
+
+[data-theme="dark"] {
+  --bg:           #09090b;
+  --bg-hero:      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(249,115,22,0.09), transparent 65%), #09090b;
+  --surface:      #111111;
+  --surface-2:    #161616;
+  --surface-3:    #1c1c1c;
+  --border:       #1e1e1e;
+  --border-2:     #252525;
+  --ink:          #fafafa;
+  --ink-2:        #a1a1aa;
+  --ink-3:        #71717a;
+  --shadow:       0 0 0 1px rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.5);
+  --shadow-sm:    0 0 0 1px rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.4);
+  --shadow-lg:    0 0 0 1px rgba(255,255,255,0.04), 0 24px 64px rgba(0,0,0,0.7);
+}
+
+[data-theme="light"] {
+  --bg:           #f5f5f4;
+  --bg-hero:      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(249,115,22,0.07), transparent 65%), #f5f5f4;
+  --surface:      #ffffff;
+  --surface-2:    #f9f9f8;
+  --surface-3:    #f0f0ef;
+  --border:       #e7e5e4;
+  --border-2:     #d6d3d1;
+  --ink:          #1c1917;
+  --ink-2:        #57534e;
+  --ink-3:        #a8a29e;
+  --shadow:       0 1px 3px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.07);
+  --shadow-sm:    0 1px 2px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-lg:    0 2px 8px rgba(0,0,0,0.05), 0 24px 64px rgba(0,0,0,0.10);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--trans), color var(--trans);
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 99px; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-5px); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Hero entrance — fires on load */
+.hero-in { animation: fadeSlideUp 0.75s cubic-bezier(0.16,1,0.3,1) both; }
+.hi-d0 { animation-delay: 0s; }
+.hi-d1 { animation-delay: 0.12s; }
+.hi-d2 { animation-delay: 0.24s; }
+.hi-d3 { animation-delay: 0.36s; }
+.hi-d4 { animation-delay: 0.52s; }
+.hi-d5 { animation-delay: 0.68s; }
+
+/* Scroll reveal — triggered by JS */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.65s cubic-bezier(0.16,1,0.3,1), transform 0.65s cubic-bezier(0.16,1,0.3,1);
+}
+.reveal.in { opacity: 1; transform: translateY(0); }
+.reveal-d1 { transition-delay: 0.08s; }
+.reveal-d2 { transition-delay: 0.16s; }
+.reveal-d3 { transition-delay: 0.24s; }
+.reveal-d4 { transition-delay: 0.32s; }
+.reveal-d5 { transition-delay: 0.40s; }
+.reveal-d6 { transition-delay: 0.48s; }
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 40px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--border);
+  transition: background var(--trans), border-color var(--trans);
+}
+
+.nav-logo { height: 22px; width: auto; display: block; transition: opacity var(--trans); }
+.nav-logo:hover { opacity: 0.72; }
+.nav-logo-dark  { display: block; }
+.nav-logo-light { display: none; }
+[data-theme="light"] .nav-logo-dark  { display: none; }
+[data-theme="light"] .nav-logo-light { display: block; }
+
+.nav-right { display: flex; align-items: center; gap: 20px; }
+
+nav ul { display: flex; align-items: center; gap: 24px; list-style: none; }
+nav ul a {
+  font-size: 12px; font-weight: 500;
+  color: var(--ink-3); text-decoration: none;
+  letter-spacing: 0.01em;
+  transition: color var(--trans);
+}
+nav ul a:hover { color: var(--ink); }
+
+.theme-btn {
+  width: 36px; height: 20px; border-radius: 99px;
+  background: var(--surface-3); border: 1px solid var(--border-2);
+  cursor: pointer; position: relative;
+  transition: background var(--trans), border-color var(--trans); flex-shrink: 0;
+}
+.theme-btn::after {
+  content: '';
+  position: absolute; top: 2px; left: 2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--orange); transition: transform 0.22s ease;
+}
+[data-theme="light"] .theme-btn::after { transform: translateX(16px); }
+
+.nav-cta {
+  font-size: 12px !important; font-weight: 600 !important;
+  color: var(--orange) !important;
+  border: 1px solid var(--orange-ring) !important;
+  border-radius: var(--radius-sm); padding: 7px 16px;
+  transition: background var(--trans) !important; white-space: nowrap;
+}
+.nav-cta:hover { background: var(--orange-dim) !important; }
+
+/* ── LAYOUT ── */
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 40px; }
+
+section { padding: 96px 0; border-top: 1px solid var(--border); }
+section:first-of-type { border-top: none; }
+
+/* ── HERO ── */
+#hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  text-align: center;
+  padding: 144px 40px 100px;
+  background: var(--bg-hero);
+  border-top: none;
+  transition: background var(--trans);
+}
+
+.tag {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--orange);
+  background: var(--orange-dim);
+  border: 1px solid var(--orange-ring);
+  border-radius: 99px; padding: 5px 14px;
+  margin-bottom: 40px;
+  animation: float 5s ease-in-out infinite;
+}
+.tag::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--orange); animation: pulse 2s ease infinite;
+}
+
+h1 {
+  font-size: clamp(44px, 6.5vw, 80px);
+  font-weight: 800; line-height: 1.04;
+  letter-spacing: -0.035em; color: var(--ink); max-width: 860px;
+}
+h1 em { font-style: normal; color: var(--orange); }
+
+.hero-sub {
+  font-size: 18px; font-weight: 400; color: var(--ink-2);
+  max-width: 520px; margin: 28px auto 0; line-height: 1.7;
+}
+
+.hero-btns {
+  display: flex; gap: 10px; margin-top: 44px;
+  justify-content: center; flex-wrap: wrap;
+}
+
+.btn {
+  font-size: 13px; font-weight: 700;
+  padding: 12px 26px; border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: opacity var(--trans), background var(--trans), border-color var(--trans), transform 0.18s ease;
+  letter-spacing: 0.01em; white-space: nowrap;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn-fill { background: var(--orange); color: #fff; }
+.btn-fill:hover { opacity: 0.88; }
+.btn-outline { background: transparent; color: var(--ink-2); border: 1px solid var(--border-2); }
+.btn-outline:hover { border-color: var(--orange-ring); color: var(--orange); }
+
+/* Stats ticker */
+.stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px; margin-top: 80px;
+  width: 100%; max-width: 760px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.stat { background: var(--surface); padding: 28px 20px; text-align: center; transition: background var(--trans); }
+.stat-val {
+  font-size: 34px; font-weight: 800; letter-spacing: -0.04em;
+  color: var(--ink); line-height: 1;
+}
+.stat-val .u { color: var(--orange); }
+.stat-lbl { font-size: 11px; color: var(--ink-3); margin-top: 6px; line-height: 1.4; font-family: var(--mono); }
+
+/* ── SECTION LABELS + HEADERS ── */
+.sl {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--orange); opacity: 0.8; margin-bottom: 20px;
+}
+
+h2 {
+  font-size: clamp(28px, 3.8vw, 46px);
+  font-weight: 800; line-height: 1.08;
+  letter-spacing: -0.03em; color: var(--ink);
+}
+h2 em { font-style: normal; color: var(--orange); }
+
+.s-sub { font-size: 16px; color: var(--ink-2); margin-top: 16px; max-width: 540px; line-height: 1.7; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-sm);
+  transition: background var(--trans), border-color var(--trans);
+}
+.card-grid {
+  display: grid; gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; margin-top: 52px; box-shadow: var(--shadow-sm);
+}
+.card-grid .card { border: none; border-radius: 0; box-shadow: none; }
+.card-pad { padding: 36px 36px; }
+
+/* ── BENTO SECTION ── */
+#features { padding: 80px 0 96px; }
+
+.bento {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr 1.3fr;
+  grid-template-rows: auto auto auto;
+  gap: 12px;
+  margin-top: 56px;
+}
+
+.bc {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--trans), border-color var(--trans), transform 0.22s ease, box-shadow 0.22s ease;
+  position: relative;
+  overflow: hidden;
+}
+.bc:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+
+.bc-chat {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 360px;
+  border-color: var(--orange-ring);
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--orange) 5%, var(--surface)) 0%,
+    var(--surface) 55%
+  );
+}
+.bc-time  { grid-column: 2; grid-row: 1; }
+.bc-cost  { grid-column: 2; grid-row: 2; }
+.bc-live  { grid-column: 3; grid-row: 1; border-color: rgba(34,197,94,0.18); }
+.bc-stack { grid-column: 3; grid-row: 2; border-color: var(--orange-ring); background: linear-gradient(135deg, var(--orange-dim), var(--surface)); }
+.bc-trial  { grid-column: 1; grid-row: 3; }
+.bc-export { grid-column: 2; grid-row: 3; }
+.bc-review { grid-column: 3; grid-row: 3; }
+
+.bc-label {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  color: var(--ink-3); letter-spacing: 0.1em; text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.bc-big-num {
+  font-size: 52px; font-weight: 800; letter-spacing: -0.05em;
+  color: var(--ink); line-height: 1; margin-bottom: 8px;
+  display: flex; align-items: baseline; gap: 3px;
+}
+.bc-unit { color: var(--orange); font-size: 36px; }
+.bc-prefix { color: var(--ink-3); font-size: 28px; }
+
+.bc-sub { font-size: 11px; color: var(--ink-3); font-family: var(--mono); line-height: 1.5; }
+.bc-title { font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; margin-bottom: 8px; }
+
+/* Live indicator */
+.live-row { display: flex; align-items: center; gap: 7px; margin-bottom: 14px; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 2s ease infinite; flex-shrink: 0; }
+.live-label { font-size: 11px; font-family: var(--mono); color: #22c55e; font-weight: 500; letter-spacing: 0.06em; }
+
+.bc-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.mini-badge {
+  font-size: 10px; font-weight: 500; font-family: var(--mono);
+  padding: 3px 9px;
+  background: var(--surface-3); border: 1px solid var(--border-2);
+  border-radius: 5px; color: var(--ink-3);
+}
+
+/* ── CHAT DEMO ── */
+.chat-demo { flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+
+.chat-msg { display: flex; align-items: flex-start; gap: 10px; }
+.chat-msg.ai { flex-direction: row-reverse; }
+
+.chat-av {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--surface-3); border: 1px solid var(--border-2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; color: var(--ink-3);
+  flex-shrink: 0; font-family: var(--mono);
+}
+.chat-av.m { background: var(--orange-dim); border-color: var(--orange-ring); color: var(--orange); }
+
+.chat-bubble {
+  font-size: 12px; line-height: 1.55; color: var(--ink-2);
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 9px 13px; max-width: 82%;
+}
+.chat-msg.ai .chat-bubble {
+  background: color-mix(in srgb, var(--orange-dim) 50%, var(--surface-2));
+  border-color: var(--orange-ring); color: var(--ink-2);
+}
+
+.chat-result {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; font-family: var(--mono); color: #22c55e;
+  background: rgba(34,197,94,0.07); border: 1px solid rgba(34,197,94,0.15);
+  border-radius: var(--radius-sm); padding: 10px 14px; margin-top: 4px;
+}
+.chat-result-dot { width: 5px; height: 5px; border-radius: 50%; background: #22c55e; animation: pulse 2s ease infinite; flex-shrink: 0; }
+
+/* ── FEATURE ICON DOTS ── */
+.feat-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--orange-dim); border: 1px solid var(--orange-ring);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; margin-bottom: 16px;
+}
+
+/* ── PROBLEM ── */
+.quotes { display: flex; flex-direction: column; gap: 16px; margin-top: 52px; }
+.quote {
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--orange);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 28px 32px;
+  transition: background var(--trans), border-color var(--trans);
+}
+.quote-text { font-size: 17px; font-weight: 500; color: var(--ink); line-height: 1.6; letter-spacing: -0.01em; }
+.quote-src { font-size: 12px; color: var(--ink-3); margin-top: 12px; font-family: var(--mono); }
+
+/* ── HOW IT WORKS ── */
+.steps {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px; margin-top: 52px;
+  background: var(--border); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm);
+}
+.step { background: var(--surface); padding: 36px 28px; transition: background var(--trans); }
+.step-n { font-family: var(--mono); font-size: 10px; color: var(--orange); font-weight: 500; letter-spacing: 0.08em; margin-bottom: 18px; }
+.step h3 { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 10px; letter-spacing: -0.02em; }
+.step p { font-size: 13px; color: var(--ink-2); line-height: 1.65; }
+
+/* ── TRACTION ── */
+.traction-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin-top: 52px; }
+
+/* ── MARKET ── */
+.market-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 52px; }
+.market-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 36px 28px;
+  box-shadow: var(--shadow-sm); transition: background var(--trans), border-color var(--trans), transform 0.22s ease;
+}
+.market-card:hover { transform: translateY(-2px); }
+.market-n { font-size: 42px; font-weight: 800; letter-spacing: -0.04em; color: var(--ink); line-height: 1; margin-bottom: 4px; }
+.market-n span { color: var(--orange); }
+.market-tag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 18px; }
+.market-card p { font-size: 13px; color: var(--ink-2); line-height: 1.65; }
+
+/* ── ROADMAP ── */
+.roadmap { display: flex; flex-direction: column; gap: 8px; margin-top: 52px; }
+.rm-item {
+  display: grid; grid-template-columns: 110px 1fr auto;
+  align-items: start; gap: 24px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 26px 28px;
+  transition: background var(--trans), border-color var(--trans), transform 0.22s ease;
+}
+.rm-item:hover { transform: translateX(3px); }
+.rm-phase { font-family: var(--mono); font-size: 11px; color: var(--orange); font-weight: 500; letter-spacing: 0.04em; padding-top: 1px; }
+.rm-title { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 5px; letter-spacing: -0.02em; }
+.rm-desc { font-size: 13px; color: var(--ink-2); line-height: 1.6; }
+
+.badge {
+  font-size: 10px; font-weight: 600; padding: 4px 10px; border-radius: 99px;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  white-space: nowrap; font-family: var(--mono); flex-shrink: 0;
+}
+.badge-live   { background: rgba(34,197,94,0.1);  color: #22c55e; border: 1px solid rgba(34,197,94,0.2); }
+.badge-build  { background: var(--orange-dim);     color: var(--orange); border: 1px solid var(--orange-ring); }
+.badge-next   { background: var(--surface-3);      color: var(--ink-3); border: 1px solid var(--border-2); }
+.badge-future { background: transparent;           color: var(--ink-3); border: 1px solid var(--border); }
+
+/* ── BUSINESS MODEL ── */
+.plan-table-wrap {
+  margin-top: 52px; background: var(--border);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; box-shadow: var(--shadow-sm);
+}
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  background: var(--surface-2); padding: 16px 24px; text-align: left;
+  font-size: 10px; font-weight: 600; color: var(--ink-3);
+  letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--mono);
+  border-bottom: 1px solid var(--border-2); transition: background var(--trans);
+}
+tbody td {
+  padding: 16px 24px; font-size: 14px; color: var(--ink-2);
+  border-bottom: 1px solid var(--border); background: var(--surface);
+  transition: background var(--trans), border-color var(--trans);
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody td:first-child { font-weight: 600; color: var(--ink); }
+.row-hl td { background: var(--surface-2) !important; }
+.row-hl td:first-child::after { content: ' ★'; color: var(--orange); }
+td strong { color: var(--orange); }
+
+/* ── INVESTMENT ── */
+#invest { background: var(--bg); }
+.invest-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 52px; }
+.invest-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 40px 40px;
+  box-shadow: var(--shadow); transition: background var(--trans), border-color var(--trans);
+}
+.invest-card .lbl {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-3); margin-bottom: 24px;
+}
+.ask-num { font-size: 64px; font-weight: 800; letter-spacing: -0.05em; color: var(--ink); line-height: 1; margin-bottom: 28px; }
+.ask-num span { color: var(--orange); }
+
+.check-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.check-list li { font-size: 13px; color: var(--ink-2); display: flex; align-items: flex-start; gap: 10px; line-height: 1.55; }
+.check-list li::before { content: '→'; color: var(--orange); flex-shrink: 0; font-size: 12px; margin-top: 1px; font-family: var(--mono); }
+.check-list li strong { color: var(--ink); font-weight: 600; }
+.invest-card.featured { border-color: var(--orange-ring); background: linear-gradient(135deg, var(--orange-dim) 0%, var(--surface) 60%); }
+
+/* ── CO-FOUNDER ── */
+.cf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 52px; }
+.cf-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 32px 28px;
+  box-shadow: var(--shadow-sm); transition: background var(--trans), border-color var(--trans), transform 0.22s ease;
+}
+.cf-card:hover { transform: translateY(-2px); }
+.cf-tag {
+  display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--orange); border: 1px solid var(--orange-ring);
+  border-radius: 5px; padding: 4px 10px; margin-bottom: 16px;
+}
+.cf-card h3 { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 10px; letter-spacing: -0.02em; }
+.cf-card p { font-size: 13px; color: var(--ink-2); line-height: 1.65; }
+
+/* ── CONTACT ── */
+#contact { text-align: center; }
+#contact h2 { max-width: 600px; margin: 0 auto 18px; }
+#contact p { font-size: 17px; color: var(--ink-2); max-width: 460px; margin: 0 auto 44px; line-height: 1.7; }
+.contact-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid var(--border); padding: 24px 40px;
+  display: flex; justify-content: space-between; align-items: center;
+  transition: border-color var(--trans);
+}
+.footer-logo { height: 18px; width: auto; }
+.footer-logo-dark  { display: block; }
+.footer-logo-light { display: none; }
+[data-theme="light"] .footer-logo-dark  { display: none; }
+[data-theme="light"] .footer-logo-light { display: block; }
+footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
+
+/* ── DIVIDER ── */
+.divider { width: 48px; height: 2px; background: var(--orange-ring); border-radius: 2px; margin: 24px 0; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  nav { padding: 0 20px; }
+  nav ul { display: none; }
+  .wrap { padding: 0 20px; }
+  section { padding: 72px 0; }
+  #hero { padding: 120px 20px 80px; }
+  .bento { grid-template-columns: 1fr 1fr; }
+  .bc-chat { grid-column: 1 / 3; grid-row: auto; min-height: auto; }
+  .bc-time, .bc-cost, .bc-live, .bc-stack { grid-column: span 1; grid-row: auto; }
+  .bc-trial, .bc-export, .bc-review { grid-column: span 1; grid-row: auto; }
+  .steps, .market-grid, .traction-grid, .invest-grid, .cf-grid { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .rm-item { grid-template-columns: 1fr; gap: 10px; }
+  h1 { font-size: 40px; }
+  .ask-num { font-size: 48px; }
+  footer { flex-direction: column; gap: 10px; text-align: center; }
+}
+
+@media (max-width: 520px) {
+  .bento { grid-template-columns: 1fr; }
+  .bc-chat, .bc-time, .bc-cost, .bc-live, .bc-stack,
+  .bc-trial, .bc-export, .bc-review { grid-column: 1; grid-row: auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a href="#hero">
+    <img class="nav-logo nav-logo-dark"  src="monocular-whitetext.svg" alt="Monocular">
+    <img class="nav-logo nav-logo-light" src="monocular-blacktext.svg" alt="Monocular">
+  </a>
+  <div class="nav-right">
+    <ul>
+      <li><a href="#problem">Problem</a></li>
+      <li><a href="#product">Product</a></li>
+      <li><a href="#market">Market</a></li>
+      <li><a href="#invest">Invest</a></li>
+      <li><a href="#team">Co-founder</a></li>
+      <li><a href="https://github.com/prabhuavula7/Monocular" target="_blank">GitHub ↗</a></li>
+    </ul>
+    <button class="theme-btn" id="themeToggle" aria-label="Toggle theme"></button>
+    <a href="#contact" class="btn nav-cta">Get in touch</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section id="hero">
+  <div class="tag hero-in hi-d0">Early Access · 2026</div>
+  <h1 class="hero-in hi-d1">The scoping engine<br>service businesses<br><em>run on.</em></h1>
+  <p class="hero-sub hero-in hi-d2">
+    Client chats. Scope lands. No manual intake, no lost requirements, no missed deals.
+  </p>
+  <div class="hero-btns hero-in hi-d3">
+    <a href="#invest" class="btn btn-fill">Investment opportunity</a>
+    <a href="#product" class="btn btn-outline">See the product</a>
+  </div>
+  <div class="stats hero-in hi-d5">
+    <div class="stat">
+      <div class="stat-val"><span class="counter" data-count="2">2</span><span class="u">hr</span></div>
+      <div class="stat-lbl">avg time to scope<br>without Monocular</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val"><span class="counter" data-count="18">18</span><span class="u">min</span></div>
+      <div class="stat-lbl">avg time to scope<br>with Monocular</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">$<span class="counter" data-count="3">3</span><span class="u">k</span></div>
+      <div class="stat-lbl">monthly time saved<br>per firm</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val"><span class="counter" data-count="417">417</span><span class="u">k</span></div>
+      <div class="stat-lbl">US service firms<br>in V1 TAM</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES BENTO ── -->
+<section id="features">
+  <div class="wrap">
+    <p class="sl reveal">Built &amp; Live</p>
+    <h2 class="reveal reveal-d1">Everything your firm needs.<br><em>Nothing it doesn't.</em></h2>
+
+    <div class="bento">
+
+      <!-- Main: Chat demo -->
+      <div class="bc bc-chat reveal">
+        <div class="bc-label">AI Intake — Live session</div>
+        <div class="chat-demo">
+          <div class="chat-msg">
+            <div class="chat-av">C</div>
+            <div class="chat-bubble">We need a mobile app — iOS &amp; Android — plus a web admin dashboard. Targeting a Q4 launch.</div>
+          </div>
+          <div class="chat-msg ai">
+            <div class="chat-av m">M</div>
+            <div class="chat-bubble">Got it. Is this greenfield, or are you migrating an existing web product to mobile?</div>
+          </div>
+          <div class="chat-msg">
+            <div class="chat-av">C</div>
+            <div class="chat-bubble">Greenfield. We have a SaaS platform but mobile is new territory. ~3 user roles.</div>
+          </div>
+          <div class="chat-msg ai">
+            <div class="chat-av m">M</div>
+            <div class="chat-bubble">Understood. What's the primary action each role takes — and which is the launch-critical one?</div>
+          </div>
+        </div>
+        <div class="chat-result">
+          <div class="chat-result-dot"></div>
+          Scope generated · 16 deliverables · 4 milestones · 14 min
+        </div>
+      </div>
+
+      <!-- Time stat -->
+      <div class="bc bc-time reveal reveal-d1">
+        <div class="bc-label">Avg Scope Time</div>
+        <div class="bc-big-num">
+          <span class="counter" data-count="18">18</span>
+          <span class="bc-unit">min</span>
+        </div>
+        <div class="bc-sub">was 2+ hours before Monocular</div>
+      </div>
+
+      <!-- Cost stat -->
+      <div class="bc bc-cost reveal reveal-d2">
+        <div class="bc-label">AI Cost Per Scope</div>
+        <div class="bc-big-num">
+          <span class="bc-prefix">$</span>
+          <span>0.05</span>
+        </div>
+        <div class="bc-sub">margins expand significantly<br>at volume</div>
+      </div>
+
+      <!-- Live indicator -->
+      <div class="bc bc-live reveal reveal-d3">
+        <div class="live-row">
+          <div class="live-dot"></div>
+          <span class="live-label">In production</span>
+        </div>
+        <div class="bc-title">Full-stack SaaS</div>
+        <div class="bc-sub">Multi-tenant · Role-based access · Webhooks verified</div>
+        <div class="bc-tags">
+          <span class="mini-badge">Stripe</span>
+          <span class="mini-badge">Clerk</span>
+          <span class="mini-badge">Supabase</span>
+          <span class="mini-badge">Vercel</span>
+        </div>
+      </div>
+
+      <!-- Claude -->
+      <div class="bc bc-stack reveal reveal-d4">
+        <div class="bc-label">Powered by</div>
+        <div class="bc-title" style="font-size:22px; margin-bottom:6px;">Claude AI</div>
+        <div class="bc-sub">Haiku 4.5 → intake<br>Sonnet 4.6 → generation<br>Prompt caching on all calls</div>
+      </div>
+
+      <!-- Trial -->
+      <div class="bc bc-trial reveal">
+        <div class="feat-icon">⚡</div>
+        <div class="bc-title">7-day trial</div>
+        <div class="bc-sub">No card required · Full access · Cancel anytime</div>
+      </div>
+
+      <!-- Export -->
+      <div class="bc bc-export reveal reveal-d1">
+        <div class="feat-icon">📄</div>
+        <div class="bc-title">PDF Export</div>
+        <div class="bc-sub">Share-ready scope in one click · Auto-named by client + version</div>
+      </div>
+
+      <!-- Review -->
+      <div class="bc bc-review reveal reveal-d2">
+        <div class="feat-icon">✓</div>
+        <div class="bc-title">Client Review</div>
+        <div class="bc-sub">Approve or request changes · Revision loop built in</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── PROBLEM ── -->
+<section id="problem">
+  <div class="wrap">
+    <p class="sl reveal">The Problem</p>
+    <h2 class="reveal reveal-d1">Service firms lose deals in<br>the gap between interest<br>and <em>proposal.</em></h2>
+    <p class="s-sub reveal reveal-d2">Discovery calls end. Notes sit in inboxes. A junior writes the scope from memory three days later. The client has already moved on.</p>
+    <div class="divider reveal reveal-d3"></div>
+    <div class="quotes">
+      <div class="quote reveal">
+        <p class="quote-text">"We lose 20–30% of qualified leads because our scoping process takes too long. By the time the proposal is ready, the client's already talking to someone else."</p>
+        <p class="quote-src">— Design agency principal, 12-person firm, US</p>
+      </div>
+      <div class="quote reveal reveal-d1">
+        <p class="quote-text">"The real cost isn't the proposal time. It's the six-figure projects that never got a chance because we couldn't respond fast enough."</p>
+        <p class="quote-src">— Monocular user interview, April 2026</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRODUCT ── -->
+<section id="product">
+  <div class="wrap">
+    <p class="sl reveal">The Product</p>
+    <h2 class="reveal reveal-d1">Intake to scope.<br><em>Automatically.</em></h2>
+    <p class="s-sub reveal reveal-d2">A complete AI-powered pipeline. No workflow changes. No client training. It works the way firms already work.</p>
+    <div class="steps" style="margin-top:52px;">
+      <div class="step reveal">
+        <div class="step-n">01 / Create</div>
+        <h3>Generate a link</h3>
+        <p>Pick a project template — web, mobile, brand, e-commerce, and more. Pre-fill client details. Live in seconds.</p>
+      </div>
+      <div class="step reveal reveal-d1">
+        <div class="step-n">02 / Capture</div>
+        <h3>Client chats, AI listens</h3>
+        <p>No account. No friction. Claude conducts a structured discovery, probing for everything specific to that project type.</p>
+      </div>
+      <div class="step reveal reveal-d2">
+        <div class="step-n">03 / Generate</div>
+        <h3>Scope appears</h3>
+        <p>Deliverables, milestones, pricing range, risk flags, assumptions, out-of-scope — all structured and editable.</p>
+      </div>
+      <div class="step reveal reveal-d3">
+        <div class="step-n">04 / Close</div>
+        <h3>Edit, share, send</h3>
+        <p>Edit inline. Share a client review link. Export PDF. Send directly. Track status from draft to won.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TRACTION ── -->
+<section id="traction">
+  <div class="wrap">
+    <p class="sl reveal">Where We Are</p>
+    <h2 class="reveal reveal-d1">Built. Billing.<br><em>Not bragging yet.</em></h2>
+    <p class="s-sub reveal reveal-d2">We're early — intentionally. The foundation is solid. The next 90 days determine what this becomes.</p>
+    <div class="card-grid traction-grid" style="margin-top:52px;">
+      <div class="card card-pad reveal">
+        <p class="step-n">Product</p>
+        <p style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px;letter-spacing:-0.02em;">Agentic engine live.</p>
+        <p style="font-size:13px;color:var(--ink-2);line-height:1.65;">Multi-tenant SaaS with a fully agentic intake engine — orchestrator loop, Zod-typed tool registry, per-run trace tables, vertical-aware AI personas. PDF export, client review, Stripe billing. 7-day trial, no card required.</p>
+      </div>
+      <div class="card card-pad reveal reveal-d1">
+        <p class="step-n">Revenue infrastructure</p>
+        <p style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px;letter-spacing:-0.02em;">Billing complete and verified.</p>
+        <p style="font-size:13px;color:var(--ink-2);line-height:1.65;">Solo $49 · Studio $109 · Agency $219/mo. Annual available. Stripe webhooks wired, DB synced. Feature gating enforced per plan.</p>
+      </div>
+      <div class="card card-pad reveal reveal-d2">
+        <p class="step-n">AI Cost</p>
+        <p style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px;letter-spacing:-0.02em;">~$0.05–0.09 per scope.</p>
+        <p style="font-size:13px;color:var(--ink-2);line-height:1.65;">Prompt caching on all Claude calls. Haiku 4.5 for intake, Sonnet 4.6 for generation. Margins expand significantly at volume.</p>
+      </div>
+      <div class="card card-pad reveal reveal-d3">
+        <p class="step-n">Next 30 days</p>
+        <p style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px;letter-spacing:-0.02em;">Admin console + first customers.</p>
+        <p style="font-size:13px;color:var(--ink-2);line-height:1.65;">Full billing management UI, usage enforcement, marketing website launch. Design partners being qualified now. ICP: US digital agencies 5–50 people.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── MARKET ── -->
+<section id="market">
+  <div class="wrap">
+    <p class="sl reveal">Market Opportunity</p>
+    <h2 class="reveal reveal-d1">Every firm that sells<br>before it builds<br><em>needs this.</em></h2>
+    <p class="s-sub reveal reveal-d2">We start with digital agencies — fastest sales cycle, sharpest pain, most vocal community. Then we expand the engine to every professional service vertical.</p>
+    <div class="market-grid">
+      <div class="market-card reveal">
+        <div class="market-n">$<span>4.2</span>B</div>
+        <div class="market-tag">V1 TAM — Digital Agencies</div>
+        <p>417K US digital agencies, studios, and consultants. Scoping is a weekly recurring pain at every firm.</p>
+      </div>
+      <div class="market-card reveal reveal-d1">
+        <div class="market-n">$<span>29</span>B</div>
+        <div class="market-tag">V2 TAM — Professional Services</div>
+        <p>Law firms, physician practices, architecture, accounting. Same repeatable intake problem. Larger deal sizes.</p>
+      </div>
+      <div class="market-card reveal reveal-d2" style="border-color: var(--orange-ring);">
+        <div class="market-n">$<span>1M</span></div>
+        <div class="market-tag">ARR at 840 customers</div>
+        <p>0.2% of US digital agencies at $109 avg/mo. Studio LTV ~$2,100. Agency LTV ~$4,200 at 5% monthly churn.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── WHY NOW ── -->
+<section id="why">
+  <div class="wrap">
+    <p class="sl reveal">Why Now</p>
+    <h2 class="reveal reveal-d1">The model makes this possible.<br>The timing makes it <em>inevitable.</em></h2>
+    <p class="s-sub reveal reveal-d2">This wasn't buildable two years ago. Long-context LLMs capable of structured multi-turn discovery at $0.09/scope didn't exist. They do now.</p>
+    <div class="divider reveal reveal-d3"></div>
+    <div class="quote reveal reveal-d4" style="margin-top:0;">
+      <p class="quote-text">Monocular sits at the intersection of three converging trends: AI that can hold a real conversation, service businesses that are capacity-constrained, and a new generation of founders who expect to run a 20-person firm like a 5-person firm. That's the window.</p>
+      <p class="quote-src">— Internal positioning memo, Q2 2026</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── ROADMAP ── -->
+<section id="roadmap">
+  <div class="wrap">
+    <p class="sl reveal">Roadmap</p>
+    <h2 class="reveal reveal-d1">From scoping tool<br>to <em>scoping engine.</em></h2>
+    <p class="s-sub reveal reveal-d2">The product ships today. The platform takes 18 months. Phase 1 has a clear proof point before Phase 2 gets funded.</p>
+    <div class="roadmap">
+      <div class="rm-item reveal">
+        <div class="rm-phase">Now</div>
+        <div>
+          <div class="rm-title">Agentic Engine — Live</div>
+          <div class="rm-desc">Multi-tenant platform with a full agentic intake engine: orchestrator loop, vertical configs (web-dev live), tool-use trace tables, Stripe billing, PDF export, client review flow. First paying customers.</div>
+        </div>
+        <span class="badge badge-live">Live</span>
+      </div>
+      <div class="rm-item reveal reveal-d1">
+        <div class="rm-phase">Q2 2026</div>
+        <div>
+          <div class="rm-title">Admin Console + Usage Enforcement</div>
+          <div class="rm-desc">Billing management UI, seat + scope limits, marketing website, design partner program launch. Target: 10 paying orgs.</div>
+        </div>
+        <span class="badge badge-build">In Build</span>
+      </div>
+      <div class="rm-item reveal reveal-d2">
+        <div class="rm-phase">Q3 2026</div>
+        <div>
+          <div class="rm-title">Platform Hardening + Integrations</div>
+          <div class="rm-desc">HubSpot, Slack, Zapier. Custom branding. Version history. Approval workflows. Target: 100 paying orgs, $120K ARR.</div>
+        </div>
+        <span class="badge badge-next">Next</span>
+      </div>
+      <div class="rm-item reveal reveal-d3">
+        <div class="rm-phase">Q4 2026</div>
+        <div>
+          <div class="rm-title">Public API — The Scoping Engine</div>
+          <div class="rm-desc">REST API lets CRMs, proposal tools, and custom stacks embed Monocular's intelligence. Per-scope API billing on top of SaaS revenue.</div>
+        </div>
+        <span class="badge badge-next">Next</span>
+      </div>
+      <div class="rm-item reveal reveal-d4">
+        <div class="rm-phase">2027</div>
+        <div>
+          <div class="rm-title">Vertical Expansion</div>
+          <div class="rm-desc">Law firms, physician practices, architecture &amp; engineering. Same engine, vertical-specific intake schemas and compliance handling.</div>
+        </div>
+        <span class="badge badge-future">Planned</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── BUSINESS MODEL ── -->
+<section id="model">
+  <div class="wrap">
+    <p class="sl reveal">Business Model</p>
+    <h2 class="reveal reveal-d1">Simple SaaS.<br><em>Predictable revenue.</em></h2>
+    <p class="s-sub reveal reveal-d2">Per-seat subscription with usage limits that create natural upgrade pressure. Annual plans at 2 months free. API billing in Phase 4 adds a second, higher-margin revenue stream.</p>
+    <div class="plan-table-wrap reveal reveal-d3">
+      <table>
+        <thead>
+          <tr>
+            <th>Plan</th><th>Monthly</th><th>Annual</th><th>Seats</th><th>Scopes / mo</th><th>LTV @ 5% churn</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Solo</td><td>$49</td><td>$490</td><td>1</td><td>20</td><td>~$941</td>
+          </tr>
+          <tr class="row-hl">
+            <td>Studio</td><td><strong>$109</strong></td><td><strong>$1,090</strong></td><td>3</td><td>75</td><td><strong>~$2,092</strong></td>
+          </tr>
+          <tr>
+            <td>Agency</td><td>$219</td><td>$2,190</td><td>Unlimited</td><td>Unlimited</td><td>~$4,202</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── INVESTMENT ── -->
+<section id="invest">
+  <div class="wrap">
+    <p class="sl reveal">Investment</p>
+    <h2 class="reveal reveal-d1">We're raising<br>a <em>pre-seed round.</em></h2>
+    <p class="s-sub reveal reveal-d2">Looking for partners who understand the AI-native SaaS thesis and have conviction in vertical software for service businesses. Operators and domain experts preferred alongside capital.</p>
+    <div class="invest-grid">
+      <div class="invest-card featured reveal">
+        <p class="lbl">The Ask</p>
+        <div class="ask-num">$<span>1.5</span>M</div>
+        <ul class="check-list">
+          <li>18 months of runway at lean team pace</li>
+          <li>Target: $500K ARR before Series A conversation</li>
+          <li>SAFE, uncapped with MFN — or priced at fair terms</li>
+          <li>Writing checks $25K–$500K</li>
+          <li>Strategic angels welcome alongside institutional capital</li>
+        </ul>
+      </div>
+      <div class="invest-card reveal reveal-d1">
+        <p class="lbl">Use of Funds</p>
+        <ul class="check-list">
+          <li><strong>50% — Go-to-market.</strong> First sales hire or fractional, content, design partner program, conference presence in agency and studio circles</li>
+          <li><strong>30% — Product.</strong> Admin console, integrations, API v1, vertical expansion research and prototyping</li>
+          <li><strong>20% — Infrastructure.</strong> Production hardening, Vercel Pro, compliance groundwork, AI cost optimization at scale</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CO-FOUNDER ── -->
+<section id="team">
+  <div class="wrap">
+    <p class="sl reveal">Co-Founder Search</p>
+    <h2 class="reveal reveal-d1">Building something real.<br>Looking for someone<br><em>equally serious.</em></h2>
+    <p class="s-sub reveal reveal-d2">The product exists. The thesis is validated. We're looking for a co-founder, not a contractor. Equity-first. Mission-aligned. Ready to move.</p>
+    <div class="cf-grid">
+      <div class="cf-card reveal">
+        <div class="cf-tag">GTM / Revenue</div>
+        <h3>Head of Growth</h3>
+        <p>Agency or studio background. Knows the ICP from the inside. Has sold to or within professional service firms. Wants to build the category, not just fill a pipeline.</p>
+      </div>
+      <div class="cf-card reveal reveal-d1">
+        <div class="cf-tag">Design / Product</div>
+        <h3>Design-Led Founder</h3>
+        <p>Obsessive about product craft. Our users have taste — the product has to feel premium. Owns the design system, marketing site, and product feel end to end.</p>
+      </div>
+      <div class="cf-card reveal reveal-d2">
+        <div class="cf-tag">Vertical Expert</div>
+        <h3>Domain Partner</h3>
+        <p>Deep in legal, medical, architecture, or accounting. Sees the intake problem clearly in your vertical. Co-build the expansion thesis for equity and category ownership.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CONTACT ── -->
+<section id="contact">
+  <div class="wrap">
+    <p class="sl reveal" style="text-align:center;">Get in Touch</p>
+    <h2 class="reveal reveal-d1">A real company at a<br><em>real inflection point.</em></h2>
+    <p class="reveal reveal-d2">If you write early checks into AI-native vertical SaaS, or you're a co-founder who sees what this becomes — let's talk. We move fast.</p>
+    <div class="contact-btns reveal reveal-d3">
+      <a href="mailto:prabhuavula7@gmail.com" class="btn btn-fill">Email us directly</a>
+      <a href="#invest" class="btn btn-outline">Back to investment</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div>
+    <img class="footer-logo footer-logo-dark"  src="monocular-whitetext.svg" alt="Monocular">
+    <img class="footer-logo footer-logo-light" src="monocular-blacktext.svg" alt="Monocular">
+  </div>
+  <p>© 2026 Monocular &nbsp;·&nbsp; <a href="https://github.com/prabhuavula7/Monocular" target="_blank" style="color:var(--ink-3);text-decoration:none;">GitHub ↗</a></p>
+</footer>
+
+<script>
+  /* ── THEME TOGGLE ── */
+  const html = document.documentElement;
+  const btn  = document.getElementById('themeToggle');
+  const stored = localStorage.getItem('mono-theme');
+  if (stored) html.setAttribute('data-theme', stored);
+
+  btn.addEventListener('click', () => {
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('mono-theme', next);
+  });
+
+  /* ── SCROLL REVEAL ── */
+  const revealEls = document.querySelectorAll('.reveal');
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        revealObserver.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  revealEls.forEach(el => revealObserver.observe(el));
+
+  /* ── COUNTER ANIMATION ── */
+  function animateCounter(el) {
+    const raw     = el.dataset.count;
+    const target  = parseFloat(raw);
+    const decimals = raw.includes('.') ? raw.split('.')[1].length : 0;
+    const duration = 1500;
+    const startT   = performance.now();
+
+    function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+    function tick(now) {
+      const t     = Math.min((now - startT) / duration, 1);
+      const value = easeOut(t) * target;
+      el.textContent = decimals > 0 ? value.toFixed(decimals) : Math.round(value);
+      if (t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  const counterObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting && !e.target.dataset.animated) {
+        e.target.dataset.animated = '1';
+        animateCounter(e.target);
+      }
+    });
+  }, { threshold: 0.5 });
+
+  document.querySelectorAll('.counter').forEach(el => counterObserver.observe(el));
+</script>
+</body>
+</html>

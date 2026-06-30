@@ -1,12 +1,34 @@
 # Monocular — Product Roadmap
 
 > Living document. Phases are sequential but items within a phase can run in parallel.
-> Last updated: 2026-04-26
+> Last updated: 2026-06-30
 
 ---
 
 ## Phase 1 — Revenue Foundation `[IN PROGRESS]`
 *Goal: charge money, close first paying customers.*
+
+### 1.0 Agentic Engine `[DONE]`
+
+The intake and scope generation paths now run through a fully agentic engine in `lib/engine/`. All model calls flow through a single `callGateway()` function; every run writes trace rows to `agent_runs` + `agent_steps`.
+
+#### Done ✅
+- [x] `lib/engine/orchestrator.ts` — agent loop with `MAX_STEPS=10` and 60k token cap
+- [x] `lib/engine/gateway.ts` — single Anthropic call-site; token accounting; prompt caching
+- [x] `lib/engine/runs.ts` — `agent_runs` + `agent_steps` trace tables
+- [x] `lib/engine/tools/` — Zod-typed registry; `ask_followup`, `synthesize_scope`, `research` tools
+- [x] `lib/engine/verticals/web-dev.ts` — V1 vertical (web-dev consultant persona, 10 scoping areas, risk library)
+- [x] `api/intake/message` routes through engine — `ask_followup` loop-exit pattern replaces SSE streaming
+- [x] `api/intake/complete` routes through engine — `synthesize_scope` tool drives scope generation
+- [x] `readyToComplete` signal — client sees "wrap up" decision card when engine sets this flag
+- [x] Fake-streaming client UX — JSON response fake-typed at ~187 chars/s for consistent feel
+- [x] `USE_ENGINE=true` feature flag — engine failure falls back to legacy path automatically
+
+#### Phase 1b — Remaining engine surfaces
+- [ ] `/admin/runs` step trace viewer — list `agent_runs`, click into a run, inspect every `agent_steps` row
+- [ ] Operator chat — firm-side chat with the engine for manual regeneration and gap analysis
+
+---
 
 ### 1.1 Stripe Billing Integration
 
@@ -289,7 +311,7 @@ The API platform allows other businesses to embed Monocular's scope generation e
 
 ## Immediate Next Actions
 
-1. **P1:** Verify trial expiry — set `trialEndsAt` to past date in DB, confirm `/dashboard` → `/pricing?expired=1` redirect
+1. **1b:** `/admin/runs` step trace viewer — table of `agent_runs`, click into a run to see every `agent_steps` row (tool I/O, latency, token cost). Guard with Clerk `publicMetadata.role === 'admin'`.
 2. **AC-1:** Scaffold `/admin` route group with layout, admin sidebar, `org:admin` guard
 3. **AC-2:** Build `/admin/billing` — current plan, payment method, seat usage, upgrade/downgrade/cancel modals + Stripe integration
 4. **AC-3:** Add `POST /api/billing/sync` manual re-sync endpoint
@@ -299,7 +321,7 @@ The API platform allows other businesses to embed Monocular's scope generation e
 8. **AC-7 + AC-8:** Integrations + API coming soon placeholder pages
 9. **1.5:** Strip billing from `/account`, clean up role enforcement
 10. **P4:** Scope usage enforcement at `/api/intake/complete`
-11. Phase 2: Marketing website scaffold + `/create-org` redesign
+11. Phase 2: Marketing website scaffold (design handoff in `design_handoff_monocular/` + `public/monocular.html`)
 
 ---
 

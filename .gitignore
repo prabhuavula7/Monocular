@@ -48,7 +48,14 @@ next-env.d.ts
 *.jsonl
 CLAUDE.md
 AGENTS.md
+CHANGELOG.md
 .gstack/
+
+# internal planning docs (kept in parent dir, out of the public repo)
+GAMEPLAN.md
+ARCHITECTURE.md
+BUSINESS.md
+DESIGN-PROMPTS.md
 
 # graphify knowledge graph (generated, not source)
 graphify-out/
