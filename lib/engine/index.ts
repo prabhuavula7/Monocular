@@ -14,6 +14,7 @@ export interface EngineResult {
   kind: 'followup' | 'scope_generated' | 'aborted'
   runId: string
   followupQuestion?: string
+  readyToComplete?: boolean
   scopeId?: string
   steps: number
   tokensUsed: number

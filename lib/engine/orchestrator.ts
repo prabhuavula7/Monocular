@@ -105,7 +105,7 @@ export async function runOrchestrator(
 
       // Loop-exit tools: return immediately without feeding result back to model
       if (toolUseBlock.name === 'ask_followup') {
-        const r = result as { question: string }
+        const r = result as { question: string; readyToComplete: boolean }
         await updateRun(runId, {
           status: 'completed',
           kind: 'followup',
@@ -116,6 +116,7 @@ export async function runOrchestrator(
         return {
           kind: 'followup',
           followupQuestion: r.question,
+          readyToComplete: r.readyToComplete,
           steps,
           tokensUsed: totalInputTokens + totalOutputTokens,
         }

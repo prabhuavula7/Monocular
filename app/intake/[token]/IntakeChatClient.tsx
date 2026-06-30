@@ -228,23 +228,45 @@ export default function IntakeChatClient({ token, agencyName }: Props) {
         body: JSON.stringify({ token, message: text }),
       })
 
-      if (!res.ok || !res.body) throw new Error('Failed to get response')
+      if (!res.ok) throw new Error('Failed to get response')
 
-      const intakeReadyToComplete = res.headers.get('X-Intake-Ready-To-Complete') === 'true'
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let full = ''
+      const contentType = res.headers.get('Content-Type') ?? ''
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        full += decoder.decode(value, { stream: true })
-        setStreamText(full)
+      if (contentType.includes('application/json')) {
+        // Engine path: fake-stream the response for consistent UX
+        const { question, readyToComplete: rtc } = await res.json() as { question: string; readyToComplete: boolean }
+        await new Promise<void>((resolve) => {
+          let i = 0
+          function tick() {
+            i = Math.min(i + 3, question.length)
+            setStreamText(question.slice(0, i))
+            if (i < question.length) setTimeout(tick, 16)
+            else {
+              setMessages((prev) => [...prev, { role: 'assistant', content: question, timestamp: new Date().toISOString() }])
+              setStreamText('')
+              if (rtc) setReadyToComplete(true)
+              resolve()
+            }
+          }
+          tick()
+        })
+      } else {
+        // Legacy streaming path
+        if (!res.body) throw new Error('No response body')
+        const intakeReadyToComplete = res.headers.get('X-Intake-Ready-To-Complete') === 'true'
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let full = ''
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          full += decoder.decode(value, { stream: true })
+          setStreamText(full)
+        }
+        setMessages((prev) => [...prev, { role: 'assistant', content: full, timestamp: new Date().toISOString() }])
+        setStreamText('')
+        if (intakeReadyToComplete) setReadyToComplete(true)
       }
-
-      setMessages((prev) => [...prev, { role: 'assistant', content: full, timestamp: new Date().toISOString() }])
-      setStreamText('')
-      if (intakeReadyToComplete) setReadyToComplete(true)
     } catch {
       setError('Something went wrong. Please try again.')
       setMessages((prev) => prev.filter((m) => m !== userMsg))
