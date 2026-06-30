@@ -7,6 +7,7 @@ import {
   integer,
   boolean,
   pgEnum,
+  real,
 } from 'drizzle-orm/pg-core'
 
 export const scopeStatusEnum = pgEnum('scope_status', [
@@ -16,6 +17,8 @@ export const scopeStatusEnum = pgEnum('scope_status', [
   'won',
   'lost',
 ])
+
+export const agentRunStatusEnum = pgEnum('agent_run_status', ['running', 'completed', 'aborted'])
 
 // One row per agency (maps to Clerk organization)
 export const agencies = pgTable('agencies', {
@@ -63,7 +66,7 @@ export const intakeLinks = pgTable('intake_links', {
   projectTypeId: uuid('project_type_id').references(() => projectTypes.id),
   token: text('token').notNull().unique(),
   // Client identity
-  label: text('label'),                        // internal label for the agency
+  label: text('label'),
   clientEmail: text('client_email'),
   clientName: text('client_name'),
   clientCompany: text('client_company'),
@@ -76,15 +79,15 @@ export const intakeLinks = pgTable('intake_links', {
   timelineContext: text('timeline_context'),
   stakeholderContext: text('stakeholder_context'),
   technicalContext: text('technical_context'),
-  mustCapture: text('must_capture'),           // things Claude must make sure to cover
-  excludedTopics: text('excluded_topics'),     // topics deliberately out of scope
-  agencyInstructions: text('agency_instructions'), // internal steering notes (not shown to client)
+  mustCapture: text('must_capture'),
+  excludedTopics: text('excluded_topics'),
+  agencyInstructions: text('agency_instructions'),
   engagementType: text('engagement_type').default('general'), // 'general' | 'template'
   // Iteration tracking
   iterationCount: integer('iteration_count').default(0),
-  latestScopeId: text('latest_scope_id'),      // uuid stored as text to avoid circular FK
-  expiresAt: timestamp('expires_at'),          // optional — null = never expires
-  usedAt: timestamp('used_at'),                // last session completed at
+  latestScopeId: text('latest_scope_id'),
+  expiresAt: timestamp('expires_at'),
+  usedAt: timestamp('used_at'),
   isDeprecated: boolean('is_deprecated').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow(),
 })
@@ -101,13 +104,12 @@ export const intakeSessions = pgTable('intake_sessions', {
   extractedData: jsonb('extracted_data').notNull().default({}),
   isComplete: boolean('is_complete').default(false),
   messageCount: integer('message_count').default(0),
-  // Iteration support
   status: text('status').default('active'),    // 'active' | 'awaiting_confirmation' | 'completed'
   iterationNumber: integer('iteration_number').default(1),
-  parentScopeId: text('parent_scope_id'),      // most recent prior scope (uuid as text)
-  priorIterationSummary: text('prior_iteration_summary'), // compact memory injected into prompt
-  completionSummary: text('completion_summary'), // summary generated when this round completes
-  clientDecision: text('client_decision'),     // 'continue' | 'modify' | 'complete'
+  parentScopeId: text('parent_scope_id'),
+  priorIterationSummary: text('prior_iteration_summary'),
+  completionSummary: text('completion_summary'),
+  clientDecision: text('client_decision'),
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
@@ -119,12 +121,12 @@ export const intakeIterations = pgTable('intake_iterations', {
   intakeLinkId: uuid('intake_link_id')
     .notNull()
     .references(() => intakeLinks.id, { onDelete: 'cascade' }),
-  scopeId: uuid('scope_id'),                   // scope generated for this iteration
-  sessionToken: text('session_token'),          // token of the session that produced this (for idempotency)
+  scopeId: uuid('scope_id'),
+  sessionToken: text('session_token'),
   iterationNumber: integer('iteration_number').notNull(),
   conversationSummary: text('conversation_summary').notNull(),
-  scopeSummary: text('scope_summary'),         // brief summary of the generated scope
-  changeLog: text('change_log'),               // what changed vs prior iteration
+  scopeSummary: text('scope_summary'),
+  changeLog: text('change_log'),
   openQuestions: text('open_questions').array(),
   createdAt: timestamp('created_at').defaultNow(),
 })
@@ -138,7 +140,7 @@ export const scopes = pgTable('scopes', {
   intakeLinkId: uuid('intake_link_id').references(() => intakeLinks.id),
   projectTypeId: uuid('project_type_id').references(() => projectTypes.id),
   status: scopeStatusEnum('status').default('draft'),
-  name: text('name'),                                                          // computed display name e.g. "Acme Corp — Website v1"
+  name: text('name'),
   clientName: text('client_name'),
   clientEmail: text('client_email'),
   transcript: jsonb('transcript').notNull().default([]),  // Message[]
@@ -160,4 +162,37 @@ export const scopes = pgTable('scopes', {
   priceEstimateGenerated: integer('price_estimate_generated'),
   priceEstimateApproved: integer('price_estimate_approved'),
   actualClosePrice: integer('actual_close_price'),
+})
+
+// Agent run trace — one row per engine invocation
+export const agentRuns = pgTable('agent_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  agencyId: uuid('agency_id').notNull().references(() => agencies.id, { onDelete: 'cascade' }),
+  scopeId: uuid('scope_id'),
+  sessionToken: text('session_token'),
+  vertical: text('vertical').notNull().default('web-dev'),
+  mode: text('mode').notNull(), // 'intake' | 'generate'
+  status: agentRunStatusEnum('status').default('running'),
+  kind: text('kind'), // 'followup' | 'scope_generated' | 'aborted'
+  totalInputTokens: integer('total_input_tokens').default(0),
+  totalOutputTokens: integer('total_output_tokens').default(0),
+  totalSteps: integer('total_steps').default(0),
+  error: text('error'),
+  startedAt: timestamp('started_at').defaultNow(),
+  completedAt: timestamp('completed_at'),
+})
+
+// One row per model call or tool call within an agent run
+export const agentSteps = pgTable('agent_steps', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  runId: uuid('run_id').notNull().references(() => agentRuns.id, { onDelete: 'cascade' }),
+  stepIndex: real('step_index').notNull(),
+  type: text('type').notNull(), // 'model_call' | 'tool_call'
+  toolName: text('tool_name'),
+  input: jsonb('input'),
+  output: jsonb('output'),
+  inputTokens: integer('input_tokens').default(0),
+  outputTokens: integer('output_tokens').default(0),
+  latencyMs: integer('latency_ms'),
+  createdAt: timestamp('created_at').defaultNow(),
 })

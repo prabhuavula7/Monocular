@@ -14,9 +14,9 @@
 - [x] Install `stripe` + `@stripe/stripe-js`
 - [x] Add env vars: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`
 - [x] Create Stripe products + prices for three tiers:
-  - **Solo** — $49/mo · $490/yr (40 scopes/mo, freelancers & independents)
-  - **Studio** — $99/mo · $990/yr (150 scopes/mo, small agencies & studios)
-  - **Agency** — $179/mo · $1,790/yr (unlimited scopes, full-service firms)
+  - **Solo** — $49/mo · $490/yr (20 scopes/mo, 1 seat — freelancers & independents)
+  - **Studio** — $109/mo · $1,090/yr (75 scopes/mo, 3 seats — small-mid agencies)
+  - **Agency** — $219/mo · $2,190/yr (unlimited scopes & seats — full-service firms)
 - [x] DB columns: `stripeCustomerId`, `stripeSubscriptionId`, `plan`, `planStatus`, `trialEndsAt` on `agencies`
 - [x] `POST /api/billing/checkout` — create Stripe Checkout session, reuse existing customer
 - [x] `POST /api/billing/portal` — Stripe Billing Portal session

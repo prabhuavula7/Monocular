@@ -12,6 +12,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/inngest',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  // Dev-only engine test routes (blocked by NODE_ENV check inside the route)
+  ...(process.env.NODE_ENV !== 'production' ? ['/api/dev/(.*)'] : []),
 ])
 
 export const proxy = clerkMiddleware(async (auth, req) => {

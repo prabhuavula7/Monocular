@@ -3,12 +3,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { clerkClient } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 import { agencies, intakeIterations, intakeLinks, intakeSessions, projectTypes, scopes } from '@/lib/db/schema'
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq, ne } from 'drizzle-orm'
 import { inngest } from '@/inngest/client'
 import { runGenerateScope } from '@/lib/run-generate-scope'
+import { runEngine } from '@/lib/engine'
 import { getResend } from '@/lib/resend'
 import { buildScopeName } from '@/lib/scope-utils'
 import type { Message } from '@/types'
+
+const USE_ENGINE = process.env.USE_ENGINE === 'true'
 
 /** Deterministic conversation summary from user messages in the transcript */
 function buildConversationSummary(messages: Message[]): string {
@@ -192,13 +195,48 @@ export async function POST(req: NextRequest) {
   // Delete session — cleaned up; history lives in intakeIterations
   await db.delete(intakeSessions).where(eq(intakeSessions.token, token))
 
+  // Load prior scope summary for iterative generation context
+  let priorScopeSummary: string | null = null
+  if (link && USE_ENGINE) {
+    const [lastIteration] = await db
+      .select()
+      .from(intakeIterations)
+      .where(and(eq(intakeIterations.intakeLinkId, link.id), ne(intakeIterations.scopeId, scope.id)))
+      .orderBy(desc(intakeIterations.iterationNumber))
+      .limit(1)
+    priorScopeSummary = lastIteration?.scopeSummary ?? null
+  }
+
   // Generate scope + send notification asynchronously after response is sent
   after(async () => {
-    // Scope generation
+    // Scope generation — engine path or legacy path
     try {
-      await runGenerateScope(scope.id)
+      if (USE_ENGINE) {
+        await runEngine({
+          mode: 'generate',
+          agencyId: session.agencyId,
+          vertical: 'web-dev',
+          scopeId: scope.id,
+          sessionToken: token,
+          context: {
+            transcript: session.messages,
+            agencyName: agency?.name,
+            priorScopeSummary,
+          },
+        })
+      } else {
+        await runGenerateScope(scope.id)
+      }
     } catch (err) {
-      console.error('[generate-scope] inline generation failed', err)
+      console.error('[generate-scope] generation failed', err)
+      // Fallback to legacy path if engine fails
+      if (USE_ENGINE) {
+        try {
+          await runGenerateScope(scope.id)
+        } catch (fallbackErr) {
+          console.error('[generate-scope] fallback also failed', fallbackErr)
+        }
+      }
     }
 
     // Agency notification email

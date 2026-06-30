@@ -73,12 +73,25 @@ app/
       Badge.tsx
   lib/
     db/index.ts       # lazy Drizzle singleton (Proxy pattern)
-    db/schema.ts      # agencies, projectTypes, intakeLinks, intakeIterations, scopes
+    db/schema.ts      # agencies, projectTypes, intakeLinks, intakeIterations, scopes, agentRuns, agentSteps
     anthropic.ts      # INTAKE_MODEL=haiku-4-5, GENERATION_MODEL=sonnet-4-6
+    engine/
+      index.ts            # runEngine(input: EngineInput): Promise<EngineResult> — single entry point
+      orchestrator.ts     # agent loop: callGateway → tool → observe → repeat (MAX_STEPS=10, 60k token cap)
+      gateway.ts          # single Anthropic call-site; ENGINE_MODEL=sonnet-4-6
+      runs.ts             # createRun / updateRun / recordStep — writes agent_runs + agent_steps
+      tools/
+        registry.ts           # tool registration; each tool has Zod schema + explicit inputJsonSchema
+        ask-followup.ts       # loop-exit: yields question to client, orchestrator exits immediately
+        synthesize-scope.ts   # loop-exit: calls runGenerateScope, orchestrator exits immediately
+        research.ts           # URL fetch with SSRF protection (blocks private IPs, metadata endpoints)
+      verticals/
+        types.ts          # VerticalConfig interface + registerVertical / getVerticalConfig registry
+        web-dev.ts        # web-dev vertical: 10 scoping areas, risk library, generation supplement
     prompts/          # intake + generation system prompts
     prompts/core-behavior.ts       # plain prose only in chat — no markdown
     prompts/generation.ts          # buildGenerationSystemPrompt + buildGenerationUserPrompt (split for caching)
-    run-generate-scope.ts          # shared generation logic
+    run-generate-scope.ts          # shared generation logic (called by synthesize-scope tool)
     schemas.ts        # Zod shape for GeneratedScope
     resend.ts         # lazy Resend singleton
   types/              # Message, GeneratedScope, RiskFlag, ReviewFlag, etc.
@@ -138,6 +151,19 @@ The DB singleton uses a Proxy to defer init until first use — prevents build-t
 
 Connection string priority: `DATABASE_URL` → `POSTGRES_URL` (Vercel injects `POSTGRES_URL`).
 
+### Schema tables (as of 2026-06-30)
+| Table | Purpose |
+|---|---|
+| `agencies` | One row per Clerk org |
+| `projectTypes` | Org-scoped project type presets |
+| `intakeLinks` | Shareable intake URLs |
+| `intakeIterations` | Per-round intake summaries (iterative memory) |
+| `scopes` | Generated scope documents |
+| `agentRuns` | One row per engine invocation — status, tokens, steps |
+| `agentSteps` | One row per model/tool call — input, output, latency |
+
+`agentRuns` and `agentSteps` were created via direct SQL (drizzle-kit push requires TTY). Add columns with `ALTER TABLE` + update `lib/db/schema.ts` to match.
+
 ---
 
 ## Intake link behavior
@@ -149,11 +175,46 @@ Connection string priority: `DATABASE_URL` → `POSTGRES_URL` (Vercel injects `P
 
 ---
 
+## Agentic engine
+
+The engine lives in `lib/engine/`. All model calls flow through one function — `callGateway()` in `gateway.ts`. Never call the Anthropic SDK directly elsewhere.
+
+### Entry point
+```typescript
+runEngine(input: EngineInput): Promise<EngineResult>
+// input: { mode: 'intake' | 'generate', agencyId, vertical, scopeId?, context }
+// result: { runId, kind, steps, tokensUsed }
+```
+
+Called from `api/intake/complete` (generate mode, guarded by `USE_ENGINE` flag). Also callable from Inngest background jobs and future operator-chat routes.
+
+### Feature flag
+`USE_ENGINE=true` in Vercel env routes generation through the engine. On engine error, `api/intake/complete` automatically falls back to legacy `runGenerateScope`. Set in both Production and Development environments.
+
+### Loop-exit tools
+`ask_followup` and `synthesize_scope` are **loop-exit tools** — when the orchestrator calls either one, it exits immediately without feeding the result back to the model. `ask_followup` returns the question to the caller; `synthesize_scope` triggers scope generation.
+
+### Trace tables
+Every engine invocation writes:
+- `agent_runs` — one row per call: status, kind, token totals, step count, error
+- `agent_steps` — one row per model call or tool call: input, output, tokens, latency
+
+This is the debug substrate and ML flywheel. Never query model output without a corresponding `agent_steps` row.
+
+### Verticals
+A vertical = `VerticalConfig` (persona prompt + extraction priorities + risk library). Add verticals in `lib/engine/verticals/` — they are config, not code branches. Register with `registerVertical()`. `web-dev` ships first.
+
+### Dev test route
+`POST /api/dev/test-engine` with `{ testIndex: 0|1|2 }` — blocked in production. Runs 3 hardcoded web-dev transcripts through the engine and returns the generated scope JSON. Requires auth bypass (route is in the public matcher for non-production only via `proxy.ts`).
+
+---
+
 ## Scope generation
 
-Two paths — both use `lib/run-generate-scope.ts`:
-1. **Inline via `after()`**: fires immediately after `/api/intake/complete` responds.
-2. **Inngest background**: only when `INNGEST_EVENT_KEY` is set.
+Three paths:
+1. **Engine (preferred)** — `USE_ENGINE=true` in env: `api/intake/complete` calls `runEngine({ mode: 'generate' })` in `after()`. Engine uses `synthesize_scope` tool which calls `runGenerateScope` internally.
+2. **Legacy inline** — `USE_ENGINE` unset or false: `after()` calls `runGenerateScope` directly.
+3. **Inngest background** — only when `INNGEST_EVENT_KEY` is set; both paths can dispatch to it.
 
 Scope editor polls `/api/scopes/[id]` every 4s while `generatedScope` is null. Retry button calls `POST /api/scopes/[id]/generate`.
 
@@ -213,7 +274,12 @@ Dashboard layout (`app/(dashboard)/layout.tsx`) redirects when:
 
 ## What's not built yet (active pipeline)
 
-See `ROADMAP.md` for the full phased plan. Key upcoming work:
+See `ROADMAP.md` for the full phased plan. The authoritative plan of record is `GAMEPLAN.md` at the repo root. Key upcoming work:
+
+### Phase 1b — Engine surfaces (next)
+- `/admin/runs` step trace viewer — list `agent_runs`, click into a run to see every `agent_steps` row with token cost, tool I/O, latency
+- Operator chat page — firm-side chat with the engine for manual regeneration and gap analysis
+- Re-point intake message route at the engine (currently still uses legacy streaming path; `ask_followup` loop-exit pattern replaces the streaming SSE approach)
 
 ### Admin console (next priority — see ROADMAP 1.4)
 The admin console is a dedicated `/admin` route for `org:admin` users with total tool access and control:
@@ -238,13 +304,16 @@ The admin console is a dedicated `/admin` route for `org:admin` users with total
 
 ## Known production blockers
 
-See `CHANGELOG.md` for full details.
+See `CHANGELOG.md` for full details. Authoritative list in `GAMEPLAN.md` Phase 0.
 
-- 🔴 **Vercel Hobby plan** — 12 serverless function limit blocks every GitHub-triggered deploy. Upgrade team `prabhu-kiran-avulas-projects` to Pro at vercel.com.
-- 🔴 **`STRIPE_WEBHOOK_SECRET` empty** — every Stripe webhook event fails; billing DB never syncs after payment. Run `stripe listen --forward-to localhost:3000/api/webhooks/stripe`, paste secret.
-- 🟡 **Clerk dev keys in prod** — `pk_test_`/`sk_test_` keys in Vercel production env. Switch to `pk_live_`/`sk_live_` before going live.
-- 🟡 **Duplicate subscription risk** — checkout API creates new subscription even if org already has active one. Needs guard before admin console billing UI is shipped.
-- 🟡 **Resend shared domain** — `onboarding@resend.dev` only delivers to verified recipients. Verify custom sender domain for production.
+- 🔴 **Vercel Pro upgrade required** — 12 serverless function limit on Hobby blocks GitHub-triggered deploys (app has 30+ routes). Upgrade `prabhu-kiran-avulas-projects` at vercel.com.
+- 🔴 **`STRIPE_WEBHOOK_SECRET` empty** — every Stripe webhook fails; billing DB never syncs after payment. Wire before billing goes live.
+- 🔴 **Clerk dev keys in prod** — `pk_test_`/`sk_test_` in Vercel production env. Switch to `pk_live_`/`sk_live_` before going live.
+- 🟡 **Scope limits not enforced** — paying customers can generate unlimited scopes. Enforce at link creation (block firm with upgrade CTA; never 402 client mid-intake).
+- 🟡 **No public intake rate limiting** — only 2s cooldown on message route. Needs Upstash sliding-window limits before launch.
+- 🟡 **Duplicate subscription risk** — checkout API creates new subscription even if org already has one. Needs guard before admin billing UI ships.
+- 🟡 **Resend shared domain** — `onboarding@resend.dev` only delivers to verified recipients. Verify `notifications@monocular.so` for production.
+- 🟡 **Vercel Preview env** — `USE_ENGINE=true` not set for Preview deployments (CLI bug with v50; add via Vercel dashboard).
 
 ---
 
@@ -263,9 +332,10 @@ RESEND_API_KEY
 INNGEST_EVENT_KEY                   # Optional in dev — required in prod
 INNGEST_SIGNING_KEY
 NEXT_PUBLIC_APP_URL
-STRIPE_SECRET_KEY                   # Coming Phase 1
-STRIPE_PUBLISHABLE_KEY              # Coming Phase 1
-STRIPE_WEBHOOK_SECRET               # Coming Phase 1
+STRIPE_SECRET_KEY
+STRIPE_PUBLISHABLE_KEY
+STRIPE_WEBHOOK_SECRET               # P0 blocker — must be wired before billing works
+USE_ENGINE                          # 'true' routes generation through lib/engine/; false = legacy path
 ```
 
 ---
