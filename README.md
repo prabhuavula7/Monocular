@@ -6,7 +6,7 @@ A client gets an intake link. A domain-expert AI agent — not a form, not a gen
 
 The AI compresses the work. The firm keeps the judgment.
 
-**→ [Full product overview, roadmap & investment thesis](./public/monocular.html)**
+**→ [Full product overview, roadmap & investment thesis](https://monocular-prabhu-kiran-avulas-projects.vercel.app/monocular.html)**
 
 ---
 
