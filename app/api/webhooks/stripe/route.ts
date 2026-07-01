@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
       if (!customerId) break
       // Only act on subscription invoices (not one-off invoices)
-      if (!invoice.subscription) break
+      if (!invoice.parent?.subscription_details?.subscription) break
 
       await db.update(agencies).set({
         planStatus: 'active',

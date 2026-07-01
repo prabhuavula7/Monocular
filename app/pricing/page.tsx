@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { PLANS, type PlanKey } from '@/lib/stripe'
 import { Check, X, Clock } from 'lucide-react'
@@ -40,6 +40,14 @@ function formatPrice(cents: number) {
 }
 
 export default function PricingPage() {
+  return (
+    <Suspense fallback={null}>
+      <PricingPageContent />
+    </Suspense>
+  )
+}
+
+function PricingPageContent() {
   const [interval, setInterval] = useState<'monthly' | 'annual'>('monthly')
   const [loading, setLoading] = useState<PlanKey | null>(null)
   const router = useRouter()

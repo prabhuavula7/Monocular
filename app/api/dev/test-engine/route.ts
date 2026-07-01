@@ -8,10 +8,6 @@ import { agencies, scopes } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { runEngine } from '@/lib/engine'
 
-if (process.env.NODE_ENV === 'production') {
-  throw new Error('Dev route loaded in production — this should not happen')
-}
-
 const TEST_TRANSCRIPTS = [
   {
     label: 'E-commerce replatform (Squarespace → Shopify + QuickBooks)',

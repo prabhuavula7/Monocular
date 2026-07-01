@@ -5,6 +5,7 @@ import {
   X, Copy, Check, Globe, Palette, ShoppingCart, Smartphone,
   TrendingUp, Share2, Video, Layout, Layers, Megaphone, Briefcase, ChevronLeft,
 } from 'lucide-react'
+import { UpgradeModal } from '@/components/dashboard/UpgradeModal'
 
 interface ProjectType {
   id: string
@@ -110,6 +111,9 @@ export function CreateLinkModal({ open, onClose }: Props) {
   const [isLoading, setIsLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const [emailError, setEmailError] = useState('')
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [upgradeMessage, setUpgradeMessage] = useState('')
+  const [currentPlan, setCurrentPlan] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     if (!open) return
@@ -181,7 +185,15 @@ export function CreateLinkModal({ open, onClose }: Props) {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to create link')
+      if (!res.ok) {
+        if (data.code === 'SCOPE_LIMIT_REACHED') {
+          setUpgradeMessage(data.error)
+          setCurrentPlan(data.plan)
+          setUpgradeOpen(true)
+          return
+        }
+        throw new Error(data.error || 'Failed to create link')
+      }
       setGeneratedUrl(data.url)
       setStep('done')
     } catch (err) {
@@ -413,6 +425,12 @@ export function CreateLinkModal({ open, onClose }: Props) {
           )}
         </div>
       </div>
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        currentPlan={currentPlan}
+        message={upgradeMessage}
+      />
     </div>
   )
 }

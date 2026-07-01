@@ -164,6 +164,14 @@ export const scopes = pgTable('scopes', {
   actualClosePrice: integer('actual_close_price'),
 })
 
+// Monocular-internal staff with cross-org visibility — orthogonal to Clerk orgRole
+export const platformAdmins = pgTable('platform_admins', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  clerkUserId: text('clerk_user_id').unique(),
+  email: text('email').notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow(),
+})
+
 // Agent run trace — one row per engine invocation
 export const agentRuns = pgTable('agent_runs', {
   id: uuid('id').primaryKey().defaultRandom(),

@@ -24,7 +24,7 @@ export async function POST(
 
   if (!agency) return NextResponse.json({ error: 'Agency not found' }, { status: 404 })
 
-  if (!planHasFeature(agency.plan, 'emailDelivery')) {
+  if (!planHasFeature(agency.plan ?? 'trial', 'emailDelivery')) {
     return NextResponse.json(
       { error: 'Email delivery requires Studio or Agency plan.', upgrade: true },
       { status: 402 }

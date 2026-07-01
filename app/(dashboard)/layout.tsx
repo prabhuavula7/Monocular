@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { agencies } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { Sidebar } from '@/components/dashboard/Sidebar'
+import { getScopeUsage } from '@/lib/plan-limits'
 
 export default async function DashboardLayout({
   children,
@@ -16,10 +17,12 @@ export default async function DashboardLayout({
 
   const [agency] = await db
     .select({
+      id: agencies.id,
       name: agencies.name,
       plan: agencies.plan,
       planStatus: agencies.planStatus,
       trialEndsAt: agencies.trialEndsAt,
+      stripeSubscriptionId: agencies.stripeSubscriptionId,
     })
     .from(agencies)
     .where(eq(agencies.clerkOrgId, orgId))
@@ -32,6 +35,8 @@ export default async function DashboardLayout({
     if (canceled) redirect('/pricing')
   }
 
+  const scopeUsage = agency ? await getScopeUsage(agency) : null
+
   return (
     <div className="h-screen flex overflow-hidden bg-canvas">
       <Sidebar
@@ -39,6 +44,7 @@ export default async function DashboardLayout({
         plan={agency?.plan ?? 'trial'}
         trialEndsAt={agency?.trialEndsAt ?? null}
         isAdmin={isAdmin}
+        scopeUsage={scopeUsage}
       />
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>

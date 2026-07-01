@@ -5,6 +5,7 @@ import { agencies, intakeLinks, projectTypes } from '@/lib/db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { z } from 'zod'
+import { getScopeUsage, isOverScopeLimit } from '@/lib/plan-limits'
 
 const LinkContextSchema = z.object({
   projectTypeId:       z.string().uuid().optional().nullable(),
@@ -76,6 +77,16 @@ export async function POST(req: NextRequest) {
 
   const agency = await getAgency(orgId)
   if (!agency) return NextResponse.json({ error: 'Agency not found' }, { status: 404 })
+
+  const usage = await getScopeUsage(agency)
+  if (isOverScopeLimit(usage)) {
+    return NextResponse.json({
+      error: `You've used all ${usage.limit} scopes on your ${agency.plan ?? 'trial'} plan this period. Upgrade to create more intake links.`,
+      code: 'SCOPE_LIMIT_REACHED',
+      usage,
+      plan: agency.plan ?? 'trial',
+    }, { status: 402 })
+  }
 
   const body = await req.json()
   const parsed = LinkContextSchema.safeParse(body)

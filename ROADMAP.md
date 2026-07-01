@@ -1,7 +1,7 @@
 # Monocular — Product Roadmap
 
 > Living document. Phases are sequential but items within a phase can run in parallel.
-> Last updated: 2026-06-30
+> Last updated: 2026-07-01
 
 ---
 
@@ -24,8 +24,9 @@ The intake and scope generation paths now run through a fully agentic engine in 
 - [x] Fake-streaming client UX — JSON response fake-typed at ~187 chars/s for consistent feel
 - [x] `USE_ENGINE=true` feature flag — engine failure falls back to legacy path automatically
 
-#### Phase 1b — Remaining engine surfaces
-- [ ] `/admin/runs` step trace viewer — list `agent_runs`, click into a run, inspect every `agent_steps` row
+#### Phase 1b — Engine surfaces
+- [x] Step trace viewer — built 2026-07-01 at `/internal/runs`, **not** `/admin/runs`. Gated by a new `platformAdmins` allowlist table (Monocular staff, cross-org), orthogonal to Clerk `orgRole` — see AGENTS.md "Platform admin" section. KPI cards (completion/error rate, avg tokens/steps), runs-per-day trend chart, status/vertical/mode/agency filters, sortable columns, per-run token + latency bar charts (recharts), expandable step input/output JSON.
+- [x] Re-point `/api/intake/message` at the engine — already implemented in code from an earlier session (verified 2026-07-01, not a new change). The one real gap was `USE_ENGINE=true` missing from Vercel Preview env (CLI v50 bug); fixed using CLI 54.18.7, plus global CLI upgraded.
 - [ ] Operator chat — firm-side chat with the engine for manual regeneration and gap analysis
 
 ---
@@ -49,7 +50,7 @@ The intake and scope generation paths now run through a fully agentic engine in 
 - [x] 60-day data retention banner on expired-trial pricing page
 - [x] `/pricing` public page: monthly/annual toggle, three-column plan cards, Stripe Checkout flow
 - [x] `/account` billing section: plan name, status badge, days-remaining, Manage billing / Upgrade CTA
-- [x] **Wire `STRIPE_WEBHOOK_SECRET`** — done 2026-04-26; `stripe listen` secret in `.env.local`, all webhooks returning 200
+- [x] **Wire `STRIPE_WEBHOOK_SECRET` (local dev)** — done 2026-04-26; `stripe listen` secret in `.env.local`, all webhooks returning 200. **Still NOT wired in Vercel production** — confirmed missing 2026-07-01 via `vercel env ls`; see Known Blockers.
 - [x] **Guard duplicate subscriptions** — done 2026-04-26; checkout route checks Stripe for active sub, redirects to portal if found
 
 #### P1 — Remaining E2E verification
@@ -58,11 +59,12 @@ The intake and scope generation paths now run through a fully agentic engine in 
 - [x] `invoice.payment_failed` handler code-verified correct (fires `past_due` update by customerId)
 - [x] Portal link verified — Manage billing + duplicate guard both open Stripe Billing Portal correctly
 
-#### P4 — Scope usage enforcement `[PRE-LAUNCH]`
-- [ ] Before creating a scope (in `/api/intake/complete`), count scopes for the org since the billing period start
-- [ ] If count ≥ `PLANS[plan].scopeLimit`, return 402 with a usage-limit error
-- [ ] Surface scope usage meter in admin console billing page: "X of Y scopes used this month"
-- [ ] Upgrade CTA shown inline when >80% of limit used
+#### P4 — Scope usage enforcement `[DONE 2026-07-01]`
+- [x] `lib/plan-limits.ts` — `getScopeUsage()` counts scopes for the org since the real Stripe billing-period start (`subscriptions.items[0].current_period_start`), calendar-month fallback for trial (no Stripe subscription). Verified live against a real org + subscription.
+- [x] Enforced at intake-**link creation** (`POST /api/links`), not at `/api/intake/complete` — deliberately: blocking the firm from creating a new link is fine, but 402-ing a client mid-conversation is bad UX. Returns 402 with `code: 'SCOPE_LIMIT_REACHED'` + usage payload.
+- [x] `UpgradeModal` component wired to the existing `POST /api/billing/checkout` route (redirects to Stripe Checkout or portal); triggered from `CreateLinkModal` on the 402 and from the sidebar usage bar.
+- [x] Sidebar shows a usage bar once a plan is known; "Upgrade" link appears at ≥80% of limit.
+- [ ] Admin-console usage meter (AC-4 below) still needs its own UI surface — the data layer is done, just not shown there yet.
 
 ---
 
@@ -311,17 +313,18 @@ The API platform allows other businesses to embed Monocular's scope generation e
 
 ## Immediate Next Actions
 
-1. **1b:** `/admin/runs` step trace viewer — table of `agent_runs`, click into a run to see every `agent_steps` row (tool I/O, latency, token cost). Guard with Clerk `publicMetadata.role === 'admin'`.
+1. ~~**1b:** Step trace viewer~~ — done 2026-07-01 at `/internal/runs` (platform-admin allowlist, not Clerk `publicMetadata`; see AGENTS.md).
 2. **AC-1:** Scaffold `/admin` route group with layout, admin sidebar, `org:admin` guard
 3. **AC-2:** Build `/admin/billing` — current plan, payment method, seat usage, upgrade/downgrade/cancel modals + Stripe integration
-4. **AC-3:** Add `POST /api/billing/sync` manual re-sync endpoint
-5. **AC-4:** Scope usage meter in admin billing page
+4. **AC-3:** Add `POST /api/billing/sync` manual re-sync endpoint — and actually wire `STRIPE_WEBHOOK_SECRET` in Vercel production (still empty)
+5. **AC-4:** Scope usage meter in admin billing page — data layer (`lib/plan-limits.ts`) already done, needs UI surface here
 6. **AC-5:** Move `/team` → `/admin/team`, restrict to admins
 7. **AC-6:** Migrate `/settings/**` → `/admin/settings/**`
 8. **AC-7 + AC-8:** Integrations + API coming soon placeholder pages
 9. **1.5:** Strip billing from `/account`, clean up role enforcement
-10. **P4:** Scope usage enforcement at `/api/intake/complete`
-11. Phase 2: Marketing website scaffold (design handoff in `design_handoff_monocular/` + `public/monocular.html`)
+10. ~~**P4:** Scope usage enforcement~~ — done 2026-07-01, enforced at link creation (see 1.1 above)
+11. Operator chat page (Phase 1b remaining item)
+12. Phase 2: Marketing website scaffold (design handoff in `design_handoff_monocular/` + `public/monocular.html`)
 
 ---
 
@@ -330,8 +333,8 @@ The API platform allows other businesses to embed Monocular's scope generation e
 | Severity | Issue | Fix |
 |---|---|---|
 | 🔴 | **Vercel Hobby plan** — 12-function cap blocks all GitHub-triggered deploys | Upgrade to Pro at vercel.com |
+| 🔴 | **`STRIPE_WEBHOOK_SECRET` empty in Vercel production** — confirmed missing 2026-07-01 via `vercel env ls` | Wire in Vercel dashboard before billing goes live |
 | 🟡 | **Clerk dev keys in Vercel prod** — auth breaks on non-localhost | Switch to `pk_live_`/`sk_live_` in Vercel env |
-| 🟡 | **Scope limits not enforced** — `scopeLimit` defined in PLANS but never checked at intake | P4 above |
 | 🟡 | **Resend shared domain** — `onboarding@resend.dev` limited to verified recipients | Verify custom sender domain |
 
 ---

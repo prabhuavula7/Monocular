@@ -11,12 +11,20 @@ import {
 } from 'lucide-react'
 import { useUser } from '@clerk/nextjs'
 import { useTheme } from '@/components/ThemeProvider'
+import { UpgradeModal } from '@/components/dashboard/UpgradeModal'
+
+interface ScopeUsage {
+  used: number
+  limit: number
+  remaining: number
+}
 
 interface Props {
   agencyName: string
   plan?: string
   trialEndsAt?: Date | null
   isAdmin?: boolean
+  scopeUsage?: ScopeUsage | null
 }
 
 // ─── Coming Soon pill ────────────────────────────────────────
@@ -45,8 +53,9 @@ const NAV_PEOPLE = [
 
 // ─── Sidebar ─────────────────────────────────────────────────
 
-export function Sidebar({ agencyName, plan, trialEndsAt, isAdmin = true }: Props) {
+export function Sidebar({ agencyName, plan, trialEndsAt, isAdmin = true, scopeUsage }: Props) {
   const [collapsed, setCollapsed] = useState(false)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
   const pathname = usePathname()
   const { user } = useUser()
   const { resolvedTheme, setTheme } = useTheme()
@@ -208,6 +217,30 @@ export function Sidebar({ agencyName, plan, trialEndsAt, isAdmin = true }: Props
             </div>
           )
         })()}
+
+        {/* Scope usage */}
+        {!collapsed && scopeUsage && Number.isFinite(scopeUsage.limit) && (() => {
+          const pct = scopeUsage.limit > 0 ? Math.min(100, Math.round((scopeUsage.used / scopeUsage.limit) * 100)) : 100
+          const nearLimit = pct >= 80
+          return (
+            <div className="mx-1 mt-3 px-2.5 py-2">
+              <div className="flex items-center justify-between text-[10px] text-ink-3 mb-1">
+                <span>{scopeUsage.used}/{scopeUsage.limit} scopes</span>
+                {nearLimit && (
+                  <button onClick={() => setUpgradeOpen(true)} className="text-orange font-semibold hover:underline">
+                    Upgrade
+                  </button>
+                )}
+              </div>
+              <div className="h-1 rounded-full bg-panel-hover overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${nearLimit ? 'bg-orange' : 'bg-ink-3/40'}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── Bottom section ── */}
@@ -294,6 +327,7 @@ export function Sidebar({ agencyName, plan, trialEndsAt, isAdmin = true }: Props
         </Link>
       </div>
     </aside>
+    <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} currentPlan={plan} />
     </div>
   )
 }

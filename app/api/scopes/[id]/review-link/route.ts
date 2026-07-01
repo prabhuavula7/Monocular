@@ -23,7 +23,7 @@ export async function POST(
 
   if (!agency) return NextResponse.json({ error: 'Agency not found' }, { status: 404 })
 
-  if (!planHasFeature(agency.plan, 'reviewLinks')) {
+  if (!planHasFeature(agency.plan ?? 'trial', 'reviewLinks')) {
     return NextResponse.json(
       { error: 'Review links require Studio or Agency plan.', upgrade: true },
       { status: 402 }
