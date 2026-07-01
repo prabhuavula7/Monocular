@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monocular — The Scoping Engine</title>
+<title>Monocular: The Scoping Engine</title>
 <link rel="icon" href="monocular-lens2.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -187,11 +187,11 @@ section:first-of-type { border-top: none; }
 
 /* ── HERO ── */
 #hero {
-  min-height: 100vh;
+  min-height: 80vh;
   display: flex; flex-direction: column;
   justify-content: center; align-items: center;
   text-align: center;
-  padding: 144px 40px 100px;
+  padding: 140px 40px 80px;
   background: var(--bg-hero);
   border-top: none;
   transition: background var(--trans);
@@ -205,7 +205,7 @@ section:first-of-type { border-top: none; }
   background: var(--orange-dim);
   border: 1px solid var(--orange-ring);
   border-radius: 99px; padding: 5px 14px;
-  margin-bottom: 40px;
+  margin-bottom: 28px;
   animation: float 5s ease-in-out infinite;
 }
 .tag::before {
@@ -216,18 +216,18 @@ section:first-of-type { border-top: none; }
 
 h1 {
   font-size: clamp(44px, 6.5vw, 80px);
-  font-weight: 800; line-height: 1.04;
-  letter-spacing: -0.035em; color: var(--ink); max-width: 860px;
+  font-weight: 700; line-height: 1.04;
+  letter-spacing: -0.03em; color: var(--ink); max-width: 860px;
 }
 h1 em { font-style: normal; color: var(--orange); }
 
 .hero-sub {
   font-size: 18px; font-weight: 400; color: var(--ink-2);
-  max-width: 520px; margin: 28px auto 0; line-height: 1.7;
+  max-width: 520px; margin: 18px auto 0; line-height: 1.7;
 }
 
 .hero-btns {
-  display: flex; gap: 10px; margin-top: 44px;
+  display: flex; gap: 10px; margin-top: 32px;
   justify-content: center; flex-wrap: wrap;
 }
 
@@ -244,17 +244,19 @@ h1 em { font-style: normal; color: var(--orange); }
 .btn-outline { background: transparent; color: var(--ink-2); border: 1px solid var(--border-2); }
 .btn-outline:hover { border-color: var(--orange-ring); color: var(--orange); }
 
-/* Stats ticker */
-.stats {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  gap: 1px; margin-top: 80px;
-  width: 100%; max-width: 760px;
-  background: var(--border);
-  border: 1px solid var(--border);
-  border-radius: var(--radius); overflow: hidden;
-  box-shadow: var(--shadow-sm);
+/* Stats band */
+.stats-band {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  transition: background var(--trans), border-color var(--trans);
 }
-.stat { background: var(--surface); padding: 28px 20px; text-align: center; transition: background var(--trans); }
+.stats {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 1px; width: 100%; max-width: 1200px; margin: 0 auto;
+  background: var(--border);
+}
+.stat { background: var(--surface); padding: 32px 24px; text-align: center; transition: background var(--trans); }
 .stat-val {
   font-size: 34px; font-weight: 800; letter-spacing: -0.04em;
   color: var(--ink); line-height: 1;
@@ -271,8 +273,8 @@ h1 em { font-style: normal; color: var(--orange); }
 
 h2 {
   font-size: clamp(28px, 3.8vw, 46px);
-  font-weight: 800; line-height: 1.08;
-  letter-spacing: -0.03em; color: var(--ink);
+  font-weight: 700; line-height: 1.08;
+  letter-spacing: -0.025em; color: var(--ink);
 }
 h2 em { font-style: normal; color: var(--orange); }
 
@@ -515,6 +517,12 @@ td strong { color: var(--orange); }
 .check-list li { font-size: 13px; color: var(--ink-2); display: flex; align-items: flex-start; gap: 10px; line-height: 1.55; }
 .check-list li::before { content: '→'; color: var(--orange); flex-shrink: 0; font-size: 12px; margin-top: 1px; font-family: var(--mono); }
 .check-list li strong { color: var(--ink); font-weight: 600; }
+/* Key-value list for invest cards */
+.kv-list { list-style: none; display: grid; grid-template-columns: 12px max-content 1fr; column-gap: 12px; row-gap: 16px; align-items: start; }
+.kv-list li { display: contents; }
+.kv-list li .arr { color: var(--orange); font-family: var(--mono); font-size: 12px; padding-top: 2px; align-self: start; }
+.kv-list li strong { color: var(--ink); font-weight: 600; font-size: 13px; line-height: 1.55; white-space: nowrap; align-self: start; }
+.kv-list li span { color: var(--ink-2); font-size: 13px; line-height: 1.55; align-self: start; }
 .invest-card.featured { border-color: var(--orange-ring); background: linear-gradient(135deg, var(--orange-dim) 0%, var(--surface) 60%); }
 
 /* ── CO-FOUNDER ── */
@@ -556,8 +564,290 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
 /* ── DIVIDER ── */
 .divider { width: 48px; height: 2px; background: var(--orange-ring); border-radius: 2px; margin: 24px 0; }
 
+/* ── WHY MONOCULAR ── */
+
+.comparison-wrap {
+  margin-top: 52px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.comparison-table { width: 100%; border-collapse: collapse; min-width: 580px; }
+
+.comparison-table thead th {
+  padding: 18px 22px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: -0.01em;
+  color: var(--ink);
+  background: var(--surface-2); border-bottom: 1px solid var(--border-2);
+  transition: background var(--trans);
+}
+.comparison-table thead th:first-child {
+  text-align: left; font-size: 10px; font-weight: 500; color: var(--ink-3);
+  letter-spacing: 0.12em; text-transform: uppercase; font-family: var(--mono);
+}
+.comparison-table thead th.col-sub {
+  font-size: 10px; font-weight: 400; color: var(--ink-3); font-family: var(--mono);
+  letter-spacing: 0.04em; display: block; margin-top: 3px;
+}
+.comparison-table thead th.col-mono {
+  background: var(--orange-dim); color: var(--orange);
+  border-left: 1px solid var(--orange-ring); border-right: 1px solid var(--orange-ring);
+  border-bottom: 1px solid var(--orange-ring);
+}
+.comparison-table thead th.col-mono .col-sub { color: rgba(249,115,22,0.6); }
+
+.comparison-table tbody td {
+  padding: 13px 22px; font-size: 13px; color: var(--ink-2);
+  border-bottom: 1px solid var(--border); background: var(--surface);
+  text-align: center; transition: background var(--trans), border-color var(--trans);
+}
+.comparison-table tbody tr:last-child td { border-bottom: none; }
+.comparison-table tbody td:first-child {
+  text-align: left; color: var(--ink); font-weight: 500; font-size: 13px;
+}
+.comparison-table tbody td.col-mono {
+  background: color-mix(in srgb, var(--orange) 4%, var(--surface));
+  border-left: 1px solid var(--orange-ring); border-right: 1px solid var(--orange-ring);
+  font-weight: 600;
+}
+.comparison-table tbody tr:last-child td.col-mono {
+  border-bottom: 1px solid var(--orange-ring);
+}
+
+.c-yes { color: #22c55e; font-size: 16px; line-height: 1; }
+.c-no  { color: var(--ink-3); opacity: 0.32; font-size: 16px; line-height: 1; }
+.c-partial {
+  font-size: 10px; font-family: var(--mono); font-weight: 500;
+  color: var(--ink-3); letter-spacing: 0.04em;
+  background: var(--surface-3); border: 1px solid var(--border-2);
+  border-radius: 5px; padding: 3px 8px; white-space: nowrap;
+}
+
+.why-callout {
+  margin-top: 48px;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-left: 3px solid var(--orange);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 30px 36px;
+  transition: background var(--trans);
+}
+.why-callout-label {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--orange); margin-bottom: 12px;
+}
+.why-callout h3 {
+  font-size: 16px; font-weight: 700; color: var(--ink);
+  margin-bottom: 12px; letter-spacing: -0.02em; line-height: 1.4;
+}
+.why-callout p {
+  font-size: 13px; color: var(--ink-2); line-height: 1.72;
+}
+.why-callout p + p { margin-top: 10px; }
+.why-callout strong { color: var(--ink); font-weight: 600; }
+
+/* Domain grid */
+.domain-section-header { margin-top: 72px; margin-bottom: 28px; }
+.domain-section-header h3 {
+  font-size: clamp(22px, 3vw, 30px); font-weight: 800;
+  color: var(--ink); letter-spacing: -0.03em; margin-top: 6px;
+}
+.domain-section-header h3 em { font-style: normal; color: var(--orange); }
+.domain-section-header p { font-size: 13px; color: var(--ink-3); margin-top: 8px; font-family: var(--mono); letter-spacing: 0.04em; }
+
+.domain-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+}
+.domain-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px 18px;
+  transition: background var(--trans), border-color var(--trans), transform 0.22s ease;
+}
+.domain-card:hover { transform: translateY(-2px); border-color: var(--border-2); }
+.domain-card.dc-active {
+  border-color: var(--orange-ring);
+  background: color-mix(in srgb, var(--orange) 5%, var(--surface));
+}
+.domain-card-tag {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px;
+}
+.domain-card.dc-active .domain-card-tag { color: var(--orange); }
+.domain-card h4 { font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 7px; letter-spacing: -0.01em; }
+.domain-card p { font-size: 11px; color: var(--ink-3); line-height: 1.55; }
+.domain-card.dc-active p { color: var(--ink-2); }
+
+/* FAQ */
+.faq-section-header { margin-top: 72px; margin-bottom: 28px; }
+.faq-section-header h3 {
+  font-size: clamp(22px, 3vw, 30px); font-weight: 800;
+  color: var(--ink); letter-spacing: -0.03em; margin-top: 6px;
+}
+.faq-section-header h3 em { font-style: normal; color: var(--orange); }
+
+.faq-list { display: flex; flex-direction: column; gap: 5px; }
+
+.faq-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  transition: border-color var(--trans), background var(--trans);
+}
+.faq-item.faq-open { border-color: var(--border-2); }
+
+.faq-q {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 18px 24px; cursor: pointer; user-select: none;
+  transition: background var(--trans);
+}
+.faq-q:hover { background: var(--surface-2); }
+
+.faq-q-text {
+  font-size: 13px; font-weight: 600; color: var(--ink);
+  letter-spacing: -0.01em; line-height: 1.45;
+}
+
+.faq-icon {
+  flex-shrink: 0; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--surface-3);
+  border: 1px solid var(--border-2);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-3); transition: transform 0.22s ease, background 0.18s ease, color 0.18s ease;
+  font-size: 13px; line-height: 1;
+}
+.faq-item.faq-open .faq-icon {
+  transform: rotate(45deg); background: var(--orange-dim);
+  border-color: var(--orange-ring); color: var(--orange);
+}
+
+.faq-body {
+  max-height: 0; overflow: hidden;
+  transition: max-height 0.38s cubic-bezier(0.16,1,0.3,1);
+}
+.faq-a {
+  padding: 0 24px 22px; padding-top: 16px;
+  font-size: 13px; color: var(--ink-2); line-height: 1.72;
+  border-top: 1px solid var(--border);
+}
+.faq-a strong { color: var(--ink); font-weight: 600; }
+.faq-a + .faq-a { border-top: none; padding-top: 0; }
+
+/* ── BEFORE / AFTER ── */
+.ba-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 52px;
+}
+.ba-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 32px 28px;
+  transition: background var(--trans), border-color var(--trans);
+}
+.ba-card.ba-before { border-top: 3px solid var(--ink-3); }
+.ba-card.ba-after  {
+  border-top: 3px solid var(--orange);
+  background: color-mix(in srgb, var(--orange) 3%, var(--surface));
+}
+.ba-header {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 22px;
+}
+.ba-before .ba-header { color: var(--ink-3); }
+.ba-after  .ba-header { color: var(--orange); }
+.ba-steps { display: flex; flex-direction: column; gap: 16px; }
+.ba-step  { display: flex; gap: 14px; align-items: flex-start; }
+.ba-dot   { width: 6px; height: 6px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+.ba-before .ba-dot { background: var(--ink-3); opacity: 0.3; }
+.ba-after  .ba-dot { background: var(--orange); }
+.ba-step-label {
+  font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+  margin-bottom: 3px; letter-spacing: 0.04em;
+}
+.ba-after .ba-step-label { color: rgba(249,115,22,0.7); }
+.ba-step-text { font-size: 13px; color: var(--ink-2); line-height: 1.55; }
+.ba-total {
+  margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border);
+  font-size: 11px; font-family: var(--mono); line-height: 1.5;
+}
+.ba-before .ba-total { color: var(--ink-3); }
+.ba-after  .ba-total { color: var(--orange); font-weight: 600; }
+
+.roi-callout {
+  margin-top: 14px;
+  background: var(--orange-dim); border: 1px solid var(--orange-ring);
+  border-radius: var(--radius); padding: 28px 32px;
+  display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+}
+.roi-big {
+  font-size: 64px; font-weight: 800; letter-spacing: -0.05em;
+  color: var(--ink); line-height: 1; flex-shrink: 0;
+}
+.roi-big span { color: var(--orange); }
+.roi-text { font-size: 13px; color: var(--ink-2); line-height: 1.72; }
+.roi-text strong { color: var(--ink); font-weight: 600; }
+
+/* ── MANIFESTO ── */
+.manifesto-block {
+  margin-top: 40px; margin-bottom: 48px;
+  padding: 44px 40px; text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  transition: background var(--trans);
+}
+.manifesto-line {
+  font-size: clamp(22px, 3.5vw, 40px);
+  font-weight: 800; letter-spacing: -0.03em;
+  color: var(--ink-3); line-height: 1.12;
+}
+.manifesto-line-2 {
+  font-size: clamp(22px, 3.5vw, 40px);
+  font-weight: 800; letter-spacing: -0.03em;
+  color: var(--ink); line-height: 1.12; margin-bottom: 20px;
+}
+.manifesto-line-2 em { font-style: normal; color: var(--orange); }
+.manifesto-sub {
+  font-size: 15px; color: var(--ink-3);
+  max-width: 480px; margin: 0 auto; line-height: 1.65;
+}
+
+/* ── TEAM / FOUNDER ── */
+.founder-card {
+  display: flex; gap: 32px; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 36px 40px;
+  box-shadow: var(--shadow); margin-top: 52px;
+  transition: background var(--trans);
+}
+.founder-avatar {
+  width: 72px; height: 72px; flex-shrink: 0;
+  border-radius: var(--radius); background: var(--orange-dim);
+  border: 2px solid var(--orange-ring);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; font-weight: 800; color: var(--orange); font-family: var(--mono);
+}
+.founder-info h3 {
+  font-size: 20px; font-weight: 800; color: var(--ink);
+  letter-spacing: -0.03em; margin-bottom: 4px;
+}
+.founder-title {
+  font-size: 11px; font-family: var(--mono); color: var(--orange);
+  letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px;
+}
+.founder-info p { font-size: 13px; color: var(--ink-2); line-height: 1.72; max-width: 620px; }
+.founder-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+
+/* ── SERIES A / BURN ── */
+.invest-grid-2 {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px;
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 900px) {
+  .domain-grid { grid-template-columns: repeat(2, 1fr); }
+  .ba-grid { grid-template-columns: 1fr; }
+  .invest-grid-2 { grid-template-columns: 1fr; }
+  .founder-card { flex-direction: column; }
   nav { padding: 0 20px; }
   nav ul { display: none; }
   .wrap { padding: 0 20px; }
@@ -568,10 +858,12 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
   .bc-time, .bc-cost, .bc-live, .bc-stack { grid-column: span 1; grid-row: auto; }
   .bc-trial, .bc-export, .bc-review { grid-column: span 1; grid-row: auto; }
   .steps, .market-grid, .traction-grid, .invest-grid, .cf-grid { grid-template-columns: 1fr; }
-  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stats { grid-template-columns: repeat(3, 1fr); }
   .rm-item { grid-template-columns: 1fr; gap: 10px; }
   h1 { font-size: 40px; }
   .ask-num { font-size: 48px; }
+  .roi-big { font-size: 48px; }
+  .manifesto-block { padding: 32px 20px; }
   footer { flex-direction: column; gap: 10px; text-align: center; }
 }
 
@@ -579,6 +871,8 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
   .bento { grid-template-columns: 1fr; }
   .bc-chat, .bc-time, .bc-cost, .bc-live, .bc-stack,
   .bc-trial, .bc-export, .bc-review { grid-column: 1; grid-row: auto; }
+  .domain-grid { grid-template-columns: 1fr; }
+  .roi-callout { flex-direction: column; }
 }
 </style>
 </head>
@@ -594,9 +888,10 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
     <ul>
       <li><a href="#problem">Problem</a></li>
       <li><a href="#product">Product</a></li>
+      <li><a href="#why-monocular">Why Us</a></li>
       <li><a href="#market">Market</a></li>
       <li><a href="#invest">Invest</a></li>
-      <li><a href="#team">Co-founder</a></li>
+      <li><a href="#team">Team</a></li>
       <li><a href="https://github.com/prabhuavula7/Monocular" target="_blank" title="GitHub" style="display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>GitHub</a></li>
     </ul>
     <button class="theme-btn" id="themeToggle" aria-label="Toggle theme"></button>
@@ -609,35 +904,39 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
   <div class="tag hero-in hi-d0">Early Access · 2026</div>
   <h1 class="hero-in hi-d1">The scoping engine<br>service businesses<br><em>run on.</em></h1>
   <p class="hero-sub hero-in hi-d2">
-    Client chats. Scope lands. No manual intake, no lost requirements, no missed deals.
+    A client gets a link. They talk through the project. A structured scope lands in your dashboard, ready to review. No back-and-forth, no missed requirements, no lost deals.
   </p>
   <div class="hero-btns hero-in hi-d3">
     <a href="#invest" class="btn btn-fill">Investment opportunity</a>
     <a href="#product" class="btn btn-outline">See the product</a>
   </div>
-  <div class="stats hero-in hi-d5">
-    <div class="stat">
+</section>
+
+<!-- ── STATS BAND ── -->
+<div class="stats-band">
+  <div class="stats">
+    <div class="stat reveal">
       <div class="stat-val"><span class="counter" data-count="2">2</span><span class="u">wk</span></div>
       <div class="stat-lbl">traditional scoping<br>manually, no tools</div>
     </div>
-    <div class="stat">
+    <div class="stat reveal reveal-d1">
       <div class="stat-val"><span class="counter" data-count="8">8</span><span class="u">hr</span></div>
-      <div class="stat-lbl">with generic AI tools<br>calls & back-and-forth</div>
+      <div class="stat-lbl">with generic AI tools<br>calls &amp; back-and-forth</div>
     </div>
-    <div class="stat">
+    <div class="stat reveal reveal-d2">
       <div class="stat-val"><span class="counter" data-count="18">18</span><span class="u">min</span></div>
       <div class="stat-lbl">with Monocular<br>structured engine</div>
     </div>
-    <div class="stat">
+    <div class="stat reveal reveal-d3">
       <div class="stat-val">$<span class="counter" data-count="3">3</span><span class="u">k</span></div>
       <div class="stat-lbl">monthly time saved<br>per firm</div>
     </div>
-    <div class="stat">
+    <div class="stat reveal reveal-d4">
       <div class="stat-val"><span class="counter" data-count="417">417</span><span class="u">k</span></div>
       <div class="stat-lbl">US service firms<br>in V1 TAM</div>
     </div>
   </div>
-</section>
+</div>
 
 <!-- ── FEATURES BENTO ── -->
 <section id="features">
@@ -649,11 +948,11 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
 
       <!-- Main: Chat demo -->
       <div class="bc bc-chat reveal">
-        <div class="bc-label">AI Intake — Live session</div>
+        <div class="bc-label">AI Intake: Live session</div>
         <div class="chat-demo">
           <div class="chat-msg">
             <div class="chat-av">C</div>
-            <div class="chat-bubble">We need a mobile app — iOS &amp; Android — plus a web admin dashboard. Targeting a Q4 launch.</div>
+            <div class="chat-bubble">We need a mobile app (iOS &amp; Android) plus a web admin dashboard. Targeting a Q4 launch.</div>
           </div>
           <div class="chat-msg ai">
             <div class="chat-av m">M</div>
@@ -665,7 +964,7 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
           </div>
           <div class="chat-msg ai">
             <div class="chat-av m">M</div>
-            <div class="chat-bubble">Understood. What's the primary action each role takes — and which is the launch-critical one?</div>
+            <div class="chat-bubble">Understood. What's the primary action each role takes, and which is the launch-critical one?</div>
           </div>
         </div>
         <div class="chat-result">
@@ -710,18 +1009,18 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
         </div>
       </div>
 
-      <!-- Claude -->
+      <!-- AI -->
       <div class="bc bc-stack reveal reveal-d4">
         <div class="bc-label">Powered by</div>
-        <div class="bc-title" style="font-size:22px; margin-bottom:6px;">Claude AI</div>
-        <div class="bc-sub">Haiku 4.5 → intake<br>Sonnet 4.6 → generation<br>Prompt caching on all calls</div>
+        <div class="bc-title" style="font-size:22px; margin-bottom:6px;">Enterprise AI</div>
+        <div class="bc-sub">Frontier models · intake + generation<br>Prompt caching · cost-optimized<br>No training on your data</div>
       </div>
 
       <!-- Trial -->
       <div class="bc bc-trial reveal">
         <div class="feat-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
-        <div class="bc-title">7-day trial</div>
-        <div class="bc-sub">No card required · Full access · Cancel anytime</div>
+        <div class="bc-title">Early access</div>
+        <div class="bc-sub">Invite-only · Design partners first · Full product access</div>
       </div>
 
       <!-- Export -->
@@ -752,11 +1051,92 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
     <div class="quotes">
       <div class="quote reveal">
         <p class="quote-text">"We lose 20–30% of qualified leads because our scoping process takes too long. By the time the proposal is ready, the client's already talking to someone else."</p>
-        <p class="quote-src">— Design agency principal, 12-person firm, US</p>
+        <p class="quote-src">Design agency principal, 12-person firm, US</p>
       </div>
       <div class="quote reveal reveal-d1">
         <p class="quote-text">"The real cost isn't the proposal time. It's the six-figure projects that never got a chance because we couldn't respond fast enough."</p>
-        <p class="quote-src">— Monocular user interview, April 2026</p>
+        <p class="quote-src">Monocular user interview, April 2026</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── BEFORE / AFTER ── -->
+<section id="before-after">
+  <div class="wrap">
+    <p class="sl reveal">The Real Cost</p>
+    <h2 class="reveal reveal-d1">Every day without a scope<br>is a deal the competitor<br><em>wins instead.</em></h2>
+    <p class="s-sub reveal reveal-d2">Service firms don't lose deals at delivery. They lose them in the gap between interest and proposal: a gap that averages five days and eight unbillable hours.</p>
+
+    <div class="ba-grid">
+      <div class="ba-card ba-before reveal">
+        <div class="ba-header">Without Monocular</div>
+        <div class="ba-steps">
+          <div class="ba-step">
+            <div class="ba-dot"></div>
+            <div>
+              <div class="ba-step-label">Monday</div>
+              <div class="ba-step-text">Prospect emails. Discovery call needs to be scheduled: 3 back-and-forth emails to find a time.</div>
+            </div>
+          </div>
+          <div class="ba-step">
+            <div class="ba-dot"></div>
+            <div>
+              <div class="ba-step-label">Tuesday</div>
+              <div class="ba-step-text">60-minute discovery call. Notes in Notion. Junior starts writing the brief from memory at 5pm.</div>
+            </div>
+          </div>
+          <div class="ba-step">
+            <div class="ba-dot"></div>
+            <div>
+              <div class="ba-step-label">Wednesday</div>
+              <div class="ba-step-text">Senior rewrites the brief. Client gets 3 clarifying questions back. Competitor's proposal just landed in their inbox.</div>
+            </div>
+          </div>
+          <div class="ba-step">
+            <div class="ba-dot"></div>
+            <div>
+              <div class="ba-step-label">Thursday – Friday</div>
+              <div class="ba-step-text">Two revision threads. Revised pricing. Proposal finally out Friday. Deal is already half-lost.</div>
+            </div>
+          </div>
+        </div>
+        <div class="ba-total">5 days · 4–8 unbillable hours per scope · senior time on paperwork</div>
+      </div>
+
+      <div class="ba-card ba-after reveal reveal-d1">
+        <div class="ba-header">With Monocular</div>
+        <div class="ba-steps">
+          <div class="ba-step">
+            <div class="ba-dot"></div>
+            <div>
+              <div class="ba-step-label">Monday:30 seconds</div>
+              <div class="ba-step-text">Intake link sent. No scheduling, no friction. Client completes the guided chat at their own pace.</div>
+            </div>
+          </div>
+          <div class="ba-step">
+            <div class="ba-dot"></div>
+            <div>
+              <div class="ba-step-label">Monday:15 minutes later</div>
+              <div class="ba-step-text">AI conducts structured discovery. Scope draft appears: 16 deliverables, 4 milestones, risk flags, pricing range.</div>
+            </div>
+          </div>
+          <div class="ba-step">
+            <div class="ba-dot"></div>
+            <div>
+              <div class="ba-step-label">Monday afternoon: 20 minutes</div>
+              <div class="ba-step-text">Senior reviews, edits, approves. Proposal sent same afternoon. Client gets it before anyone else does.</div>
+            </div>
+          </div>
+        </div>
+        <div class="ba-total">Same day · Under 1 hour total · senior focused on the work that matters</div>
+      </div>
+    </div>
+
+    <div class="roi-callout reveal">
+      <div class="roi-big">71<span>×</span></div>
+      <div class="roi-text">
+        At 3 scopes/week (typical for a 10-person agency), Monocular recaptures <strong>52 hours per month</strong> of senior time. At $150/hr that's <strong>$7,800/month</strong> returned to billable work, client relationships, and delivery. The Studio plan is <strong>$109/month</strong>. One saved scope session covers the next two months of subscription.
       </div>
     </div>
   </div>
@@ -772,17 +1152,17 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
       <div class="step reveal">
         <div class="step-n">01 / Create</div>
         <h3>Generate a link</h3>
-        <p>Pick a project template — web, mobile, brand, e-commerce, and more. Pre-fill client details. Live in seconds.</p>
+        <p>Pick a project template: web, mobile, brand, e-commerce, and more. Pre-fill client details. Live in seconds.</p>
       </div>
       <div class="step reveal reveal-d1">
         <div class="step-n">02 / Capture</div>
         <h3>Client chats, AI listens</h3>
-        <p>No account. No friction. Claude conducts a structured discovery, probing for everything specific to that project type.</p>
+        <p>No account, no app download. The client gets a link, opens it on any device, and has a 15-minute conversation. The AI probes for everything specific to that project type — budget, timeline, stack, risks.</p>
       </div>
       <div class="step reveal reveal-d2">
         <div class="step-n">03 / Generate</div>
         <h3>Scope appears</h3>
-        <p>Deliverables, milestones, pricing range, risk flags, assumptions, out-of-scope — all structured and editable.</p>
+        <p>Deliverables, milestones, pricing range, risk flags, assumptions, out-of-scope. All structured and editable.</p>
       </div>
       <div class="step reveal reveal-d3">
         <div class="step-n">04 / Close</div>
@@ -793,17 +1173,254 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
   </div>
 </section>
 
+<!-- ── WHY MONOCULAR ── -->
+<section id="why-monocular">
+  <div class="wrap">
+    <p class="sl reveal">Why Monocular</p>
+    <h2 class="reveal reveal-d1">Not a chatbot.<br>Not a form. Not a<br><em>prompt wrapper.</em></h2>
+    <p class="s-sub reveal reveal-d2">"Can't I just use a general AI tool for this?" Yes, and your team probably already tried it. Here's why the output ended up getting rewritten from scratch anyway.</p>
+
+    <!-- Comparison table -->
+    <div class="comparison-wrap reveal reveal-d3">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Generic AI<br><span class="col-sub">General-purpose chat tools</span></th>
+            <th>Workflow Tools<br><span class="col-sub">Proposify · HoneyBook · Dubsado</span></th>
+            <th class="col-mono">Monocular<br><span class="col-sub">Purpose-built scoping engine</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Multi-turn intake conversation (async, no scheduling)</td>
+            <td><span class="c-partial">Manual</span></td>
+            <td><span class="c-no">✗</span></td>
+            <td class="col-mono"><span class="c-yes">✓</span></td>
+          </tr>
+          <tr>
+            <td>Domain-expert AI persona (probes scope-creep, project type, integrations)</td>
+            <td><span class="c-no">✗</span></td>
+            <td><span class="c-no">✗</span></td>
+            <td class="col-mono"><span class="c-yes">✓</span></td>
+          </tr>
+          <tr>
+            <td>Configured with your firm's rates, risk flags, and project templates</td>
+            <td><span class="c-no">✗</span></td>
+            <td><span class="c-partial">Partial</span></td>
+            <td class="col-mono"><span class="c-yes">✓</span></td>
+          </tr>
+          <tr>
+            <td>Structured scope output: typed deliverables, milestones, risk flags, pricing</td>
+            <td><span class="c-partial">Freeform</span></td>
+            <td><span class="c-partial">Manual entry</span></td>
+            <td class="col-mono"><span class="c-yes">✓</span></td>
+          </tr>
+          <tr>
+            <td>Mandatory human review gate before any client-facing output</td>
+            <td><span class="c-no">✗</span></td>
+            <td><span class="c-no">✗</span></td>
+            <td class="col-mono"><span class="c-yes">✓</span></td>
+          </tr>
+          <tr>
+            <td>Full workflow: draft → review → edit → approve → PDF → send</td>
+            <td><span class="c-no">✗</span></td>
+            <td><span class="c-partial">Post-manual</span></td>
+            <td class="col-mono"><span class="c-yes">✓</span></td>
+          </tr>
+          <tr>
+            <td>Per-run trace and audit log (every AI call recorded)</td>
+            <td><span class="c-no">✗</span></td>
+            <td><span class="c-no">✗</span></td>
+            <td class="col-mono"><span class="c-yes">✓</span></td>
+          </tr>
+          <tr>
+            <td>Vertical expansion via config: same engine, new domain</td>
+            <td><span class="c-no">✗</span></td>
+            <td><span class="c-no">✗</span></td>
+            <td class="col-mono"><span class="c-yes">✓</span></td>
+          </tr>
+          <tr>
+            <td>Data flywheel: output calibrates to your firm's history over time</td>
+            <td><span class="c-no">✗</span></td>
+            <td><span class="c-no">✗</span></td>
+            <td class="col-mono"><span class="c-yes">✓</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Memory graph callout -->
+    <div class="why-callout reveal">
+      <div class="why-callout-label">The sophisticated objection</div>
+      <h3>"What about an AI chat tool with a memory system? Couldn't I give it a knowledge graph of my firm?"</h3>
+      <p><strong>Memory is recall. Monocular is a system.</strong> An AI chat with memory can remember your rates and past scope docs. What it can't do: detect when a 15-minute conversation has collected enough to generate (that's a classification problem, not recall); enforce that a human reviews the output before it reaches a client (that's a workflow, not a prompt); isolate each firm's data from every other firm (that's multi-tenancy); or record what happened after: did pricing hold, how much did the reviewer edit, was it won? (that's the data flywheel).</p>
+      <p>You'd spend weeks stitching these together, and you'd end up with a Monocular-shaped system that still needs domain tuning, trust infrastructure, and PDF export. We built that system so firms don't have to.</p>
+    </div>
+
+    <!-- Domain grid -->
+    <div class="domain-section-header reveal">
+      <p class="sl" style="margin-bottom:10px;">One Engine · Every Vertical</p>
+      <h3>Same orchestrator.<br><em>Any domain, any firm.</em></h3>
+      <p>A vertical = persona prompt + extraction schema + risk library. Swap the config, not the code.</p>
+    </div>
+
+    <div class="domain-grid">
+      <div class="domain-card dc-active reveal">
+        <div class="domain-card-tag">Live · V1</div>
+        <h4>Web Development</h4>
+        <p>CMS vs custom, auth, integrations, content migration, hosting, SEO, mobile, cookie compliance, scope-creep triggers</p>
+      </div>
+      <div class="domain-card reveal reveal-d1">
+        <div class="domain-card-tag">V2 · Planned</div>
+        <h4>Legal</h4>
+        <p>Matter type, jurisdiction, parties, deadlines, privilege concerns, billing structure, complexity flags</p>
+      </div>
+      <div class="domain-card reveal reveal-d2">
+        <div class="domain-card-tag">V2 · Planned</div>
+        <h4>Healthcare</h4>
+        <p>Specialty, visit type, EHR system, HIPAA posture, patient flow, referral sources, payer mix</p>
+      </div>
+      <div class="domain-card reveal reveal-d3">
+        <div class="domain-card-tag">V2 · Planned</div>
+        <h4>Architecture</h4>
+        <p>Project type, site conditions, regulatory requirements, design intent, phasing, CAD deliverables</p>
+      </div>
+      <div class="domain-card reveal reveal-d4">
+        <div class="domain-card-tag">V2 · Planned</div>
+        <h4>IT Consulting</h4>
+        <p>Infrastructure, integrations, security posture, compliance requirements, team size, migration risk</p>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="faq-section-header reveal">
+      <p class="sl" style="margin-bottom:10px;">Frequently Asked</p>
+      <h3>Every objection.<br><em>Answered honestly.</em></h3>
+    </div>
+
+    <div class="faq-list reveal">
+
+      <div class="faq-item">
+        <div class="faq-q">
+          <span class="faq-q-text">"I already use AI tools for scoping. Why do I need this?"</span>
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-body">
+          <div class="faq-a">
+            <strong>General AI tools have no idea who you are.</strong> They don't know your rate range, your risk flags, your project types, or your assumptions. Every session starts from zero. The output is a blob of freeform text in a chat window: not in a dashboard, not editable inline, not one click from a PDF, not sendable to your client for review. Your team copies it to Word and rewrites it anyway.<br><br>
+            Monocular is pre-configured with your firm's data. The AI persona runs your extraction schema, asks the questions a senior person from your firm would ask, and produces a structured scope document with typed deliverables, milestones, risk flags, and pricing within your configured rate range, landing in your review queue. The agency founder edits, not rewrites. That's the difference.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">
+          <span class="faq-q-text">"Can't I just write a really good AI system prompt and get the same result?"</span>
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-body">
+          <div class="faq-a">
+            To replicate Monocular with a system prompt you'd need to write: the intake persona (domain-expert with scope-creep detection and dynamic probing logic); the extraction schema for 10+ scoping areas; the risk library keyed by project type; the orchestrator that decides when intake has collected enough to generate; the generation step that produces typed deliverables, milestones, and assumptions; the pricing guardrails with clamping to your rate range; the human review gate with confidence scoring; the workflow from draft to approval to PDF to client send; the audit trail on every AI call; and the multi-tenancy that isolates your data from every other firm's.<br><br>
+            <strong>That's not a prompt. That's Monocular.</strong> The system prompt is the starting point. The engine, trust infrastructure, and workflow are the product.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">
+          <span class="faq-q-text">"Our discovery process already works. Why change it?"</span>
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-body">
+          <div class="faq-a">
+            Good discovery processes work on the 30–40% of projects that are complex and novel, the ones that genuinely need a senior person in the room. Monocular handles the 60–70% that follow a pattern you've scoped a dozen times already. Shopify builds, SaaS dashboards, brand refresh and web presence. Your senior people have done these. The question is whether they need to be the ones doing intake for all of them.<br><br>
+            <strong>The worst case of trying Monocular on one project:</strong> you get a draft you don't use and it cost you 30 seconds to send a link. The expected case: a draft your team spends 20 minutes reviewing instead of 8 hours writing, and your senior person focuses on the projects that actually need them.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">
+          <span class="faq-q-text">"You're only in software development. How does this work for law, medicine, architecture?"</span>
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-body">
+          <div class="faq-a">
+            <strong>Verticals are config, not code.</strong> The orchestrator, intake engine, human review gate, and data flywheel are domain-agnostic. What changes per vertical is the persona prompt, extraction schema, and risk library — stored as data, not compiled into the engine. A legal agent probes matter type, jurisdiction, and privilege concerns. A medical agent probes specialty, EHR system, and HIPAA posture. Same infrastructure. Different config file.<br><br>
+            The ROI compounds in regulated verticals. Attorney time runs $400–800/hr. One recovered intake session covers months of subscription. We start with web dev because it has the fastest feedback loop. The engine was designed for all of them from day one.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">
+          <span class="faq-q-text">"Won't Proposify or HoneyBook just add a chat intake feature?"</span>
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-body">
+          <div class="faq-a">
+            Eventually, maybe. But <strong>their data models, UIs, and sales motions are built for what happens after requirements already exist.</strong> Proposify's AI polishes prose in a proposal editor. HoneyBook's AI summarizes notes after a call. Neither product has a domain-expert intake persona, an extraction schema, a human review gate, or an orchestrator that decides when intake is complete. That's not a feature they're adding. It's a different product with a different entry point and a different trust posture.<br><br>
+            Their product cycles run 12–18 months. The defense isn't feature velocity. It's deeply configured paying customers who have risk flags, rate ranges, project types, and 12 months of scope history that would take months to reconstruct elsewhere. Configuration depth is the switching cost.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">
+          <span class="faq-q-text">"Won't better AI models eventually make this obsolete?"</span>
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-body">
+          <div class="faq-a">
+            <strong>Better models make Monocular better, not obsolete.</strong> The AI layer is the replaceable part. What isn't: the labeled dataset that accumulates as a byproduct of every review. <code>(generated, reviewer-improved)</code> preference pairs, confirmed and dismissed risk flags, win/loss outcomes with pricing deltas. A firm 12 months in has a training set calibrated to their project types, vocabulary, rates, and outcomes. No competitor can buy that data, and it doesn't reset when a new model comes out.<br><br>
+            The architectural principle: "Built solely on model quality, you start over with every model generation. Built on proprietary data, the moat ports forward." The model is the ingredient. The firm's data history is the recipe.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">
+          <span class="faq-q-text">"What if the AI generates a wrong scope or bad pricing?"</span>
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-body">
+          <div class="faq-a">
+            <strong>Nothing reaches a client without explicit human review.</strong> The gate is structural, not a best practice, not a reminder. Export and send are blocked until every review flag has been acknowledged by a named reviewer. Confidence scoring surfaces where intake was thin. Pricing carries a mandatory disclaimer and is clamped to the firm's configured rate range. The reviewer's name and timestamp are recorded.<br><br>
+            If a scope is wrong after human review, that's a review failure, and the system is designed to make review failures visible before they reach clients. The design-partner phase exists precisely to find gaps in question sets, risk libraries, and edge cases. Any pricing incident during pilot immediately removes pricing from V1. Trust is built gate by gate, not promised up front.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">
+          <span class="faq-q-text">"Does Monocular's AI train on our intake data or scope documents?"</span>
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-body">
+          <div class="faq-a">
+            No. <strong>The AI infrastructure we use does not train on customer inputs or outputs by default.</strong> A Data Processing Agreement is available confirming this. Client intake conversations and generated scope documents are stored under the firm's Monocular account; the agency is the data controller and Monocular is the processor. The firm can delete any scope from their dashboard at any time.<br><br>
+            Regulated industries (HIPAA, attorney-client privilege) are V2 verticals, built to those standards with per-agency retention controls, DPA templates, and provider terms confirmation. Not retrofitted after the fact.
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /faq-list -->
+
+  </div>
+</section>
+
 <!-- ── TRACTION ── -->
 <section id="traction">
   <div class="wrap">
     <p class="sl reveal">Where We Are</p>
     <h2 class="reveal reveal-d1">Built. Billing.<br><em>Not bragging yet.</em></h2>
-    <p class="s-sub reveal reveal-d2">We're early — intentionally. The foundation is solid. The next 90 days determine what this becomes.</p>
+    <p class="s-sub reveal reveal-d2">We're early, intentionally. The foundation is solid. The next 90 days determine what this becomes.</p>
     <div class="card-grid traction-grid" style="margin-top:52px;">
       <div class="card card-pad reveal">
         <p class="step-n">Product</p>
         <p style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px;letter-spacing:-0.02em;">Agentic engine live.</p>
-        <p style="font-size:13px;color:var(--ink-2);line-height:1.65;">Multi-tenant SaaS with a fully agentic intake engine — orchestrator loop, Zod-typed tool registry, per-run trace tables, vertical-aware AI personas. PDF export, client review, Stripe billing. 7-day trial, no card required.</p>
+        <p style="font-size:13px;color:var(--ink-2);line-height:1.65;">Multi-tenant SaaS with a fully agentic intake engine: orchestrator loop, Zod-typed tool registry, per-run trace tables, vertical-aware AI personas. PDF export, client review workflow, Stripe billing. Invite-only early access.</p>
       </div>
       <div class="card card-pad reveal reveal-d1">
         <p class="step-n">Revenue infrastructure</p>
@@ -813,7 +1430,7 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
       <div class="card card-pad reveal reveal-d2">
         <p class="step-n">AI Cost</p>
         <p style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px;letter-spacing:-0.02em;">~$0.05–0.09 per scope.</p>
-        <p style="font-size:13px;color:var(--ink-2);line-height:1.65;">Prompt caching on all Claude calls. Haiku 4.5 for intake, Sonnet 4.6 for generation. Margins expand significantly at volume.</p>
+        <p style="font-size:13px;color:var(--ink-2);line-height:1.65;">Frontier models with prompt caching. Cost is variable and scales with usage; margins expand significantly at volume.</p>
       </div>
       <div class="card card-pad reveal reveal-d3">
         <p class="step-n">Next 30 days</p>
@@ -829,16 +1446,16 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
   <div class="wrap">
     <p class="sl reveal">Market Opportunity</p>
     <h2 class="reveal reveal-d1">Every firm that sells<br>before it builds<br><em>needs this.</em></h2>
-    <p class="s-sub reveal reveal-d2">We start with digital agencies — fastest sales cycle, sharpest pain, most vocal community. Then we expand the engine to every professional service vertical.</p>
+    <p class="s-sub reveal reveal-d2">We start with digital agencies: fastest sales cycle, sharpest pain, most vocal community. Then we expand the engine to every professional service vertical.</p>
     <div class="market-grid">
       <div class="market-card reveal">
         <div class="market-n">$<span>4.2</span>B</div>
-        <div class="market-tag">V1 TAM — Digital Agencies</div>
+        <div class="market-tag">V1 TAM: Digital Agencies</div>
         <p>417K US digital agencies, studios, and consultants. Scoping is a weekly recurring pain at every firm.</p>
       </div>
       <div class="market-card reveal reveal-d1">
         <div class="market-n">$<span>29</span>B</div>
-        <div class="market-tag">V2 TAM — Professional Services</div>
+        <div class="market-tag">V2 TAM: Professional Services</div>
         <p>Law firms, physician practices, architecture, accounting. Same repeatable intake problem. Larger deal sizes.</p>
       </div>
       <div class="market-card reveal reveal-d2" style="border-color: var(--orange-ring);">
@@ -859,7 +1476,7 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
     <div class="divider reveal reveal-d3"></div>
     <div class="quote reveal reveal-d4" style="margin-top:0;">
       <p class="quote-text">Monocular sits at the intersection of three converging trends: AI that can hold a real conversation, service businesses that are capacity-constrained, and a new generation of founders who expect to run a 20-person firm like a 5-person firm. That's the window.</p>
-      <p class="quote-src">— Internal positioning memo, Q2 2026</p>
+      <p class="quote-src">Internal positioning memo, Q2 2026</p>
     </div>
   </div>
 </section>
@@ -874,7 +1491,7 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
       <div class="rm-item reveal">
         <div class="rm-phase">Now</div>
         <div>
-          <div class="rm-title">Agentic Engine — Live</div>
+          <div class="rm-title">Agentic Engine: Live</div>
           <div class="rm-desc">Multi-tenant platform with a full agentic intake engine: orchestrator loop, vertical configs (web-dev live), tool-use trace tables, Stripe billing, PDF export, client review flow. First paying customers.</div>
         </div>
         <span class="badge badge-live">Live</span>
@@ -898,18 +1515,36 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
       <div class="rm-item reveal reveal-d3">
         <div class="rm-phase">Q4 2026</div>
         <div>
-          <div class="rm-title">Public API — The Scoping Engine</div>
+          <div class="rm-title">Public API: The Scoping Engine</div>
           <div class="rm-desc">REST API lets CRMs, proposal tools, and custom stacks embed Monocular's intelligence. Per-scope API billing on top of SaaS revenue.</div>
         </div>
         <span class="badge badge-next">Next</span>
       </div>
       <div class="rm-item reveal reveal-d4">
+        <div class="rm-phase">Q1 2027</div>
+        <div>
+          <div class="rm-title">Multimodal Intake</div>
+          <div class="rm-desc">Voice intake via transcription and voice synthesis. Image and reference uploads attached directly to generated scopes. Clients talk through requirements, sketch ideas, or share screens. Monocular captures and structures it all.</div>
+        </div>
+        <span class="badge badge-future">Planned</span>
+      </div>
+
+      <div class="rm-item reveal reveal-d5">
         <div class="rm-phase">2027</div>
         <div>
           <div class="rm-title">Vertical Expansion</div>
           <div class="rm-desc">Law firms, physician practices, architecture &amp; engineering. Same engine, vertical-specific intake schemas and compliance handling.</div>
         </div>
         <span class="badge badge-future">Planned</span>
+      </div>
+
+      <div class="rm-item reveal reveal-d6">
+        <div class="rm-phase">2027+</div>
+        <div>
+          <div class="rm-title">The Delivery Layer</div>
+          <div class="rm-desc">Monocular moves past intake. The approved scope becomes a living contract: milestone tracking, scope drift detection, change order generation, client communication, and re-engagement triggers. The operating system for the full client engagement lifecycle, from first conversation to final invoice.</div>
+        </div>
+        <span class="badge badge-future">Vision</span>
       </div>
     </div>
   </div>
@@ -950,51 +1585,110 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
     <p class="sl reveal">Investment</p>
     <h2 class="reveal reveal-d1">Raising <em>$2.5M</em> to go<br>from engine to market.</h2>
     <p class="s-sub reveal reveal-d2">The hard part is done. The intake engine is live, billing is wired, and the first vertical is shipping. We need capital and operators to close the first 100 firms.</p>
+
+    <div class="manifesto-block reveal reveal-d3">
+      <div class="manifesto-line">We want your money.</div>
+      <div class="manifesto-line-2">We give you back your <em>time.</em></div>
+      <p class="manifesto-sub">So service firms can focus on the things that actually matter: the clients, the craft, the relationships. Not the paperwork between interest and proposal.</p>
+    </div>
+
     <div class="invest-grid">
       <div class="invest-card featured reveal">
         <p class="lbl">The Ask</p>
         <div class="ask-num">$<span>2.5</span>M</div>
         <ul class="check-list">
-          <li>18 months of runway at lean team pace</li>
+          <li>18 months of runway at lean founding-team pace</li>
           <li>Target: $500K ARR before Series A conversation</li>
-          <li>SAFE, uncapped with MFN — or priced at fair terms</li>
+          <li>SAFE, uncapped with MFN, or priced at fair terms</li>
           <li>Writing checks $25K–$500K</li>
           <li>Strategic angels welcome alongside institutional capital</li>
         </ul>
       </div>
       <div class="invest-card reveal reveal-d1">
         <p class="lbl">Use of Funds</p>
-        <ul class="check-list">
-          <li><strong>50% — Go-to-market.</strong> First sales hire or fractional, content, design partner program, conference presence in agency and studio circles</li>
-          <li><strong>30% — Product.</strong> Admin console, integrations, API v1, vertical expansion research and prototyping</li>
-          <li><strong>20% — Infrastructure.</strong> Production hardening, Vercel Pro, compliance groundwork, AI cost optimization at scale</li>
+        <ul class="kv-list">
+          <li><span class="arr">→</span><strong>50% Go-to-market.</strong><span>GTM hire, design partner program, content, agency community presence</span></li>
+          <li><span class="arr">→</span><strong>30% Product.</strong><span>CTO + AI/ML engineer, admin console, integrations, API v1, vertical expansion</span></li>
+          <li><span class="arr">→</span><strong>20% Infrastructure &amp; Ops.</strong><span>Production hardening, compliance groundwork, legal, visa sponsorship, AI cost optimization</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="invest-grid-2">
+      <div class="invest-card reveal">
+        <p class="lbl">Burn &amp; Unit Economics</p>
+        <ul class="kv-list">
+          <li><span class="arr">→</span><strong>~90% gross margin.</strong><span>AI inference and payment processing costs are minimal relative to subscription revenue, improving with scale</span></li>
+          <li><span class="arr">→</span><strong>Lean infra model.</strong><span>Variable costs scale with usage, not headcount; margins expand significantly at volume</span></li>
+          <li><span class="arr">→</span><strong>Break-even: ~$70K MRR.</strong><span>Achievable well inside the investment horizon at target growth rate</span></li>
+          <li><span class="arr">→</span><strong>$2.5M: 18–24 months runway.</strong><span>Full founding team, built to reach Series A milestones before needing to raise again</span></li>
+        </ul>
+      </div>
+      <div class="invest-card reveal reveal-d1">
+        <p class="lbl">Series A Triggers &amp; Exit</p>
+        <ul class="kv-list">
+          <li><span class="arr">→</span><strong>Series A conditions.</strong><span>$1.5–3M ARR, 2–3× YoY growth, NRR 100–110%, payback under 12 months</span></li>
+          <li><span class="arr">→</span><strong>Series A size.</strong><span>$5–8M defensible at those metrics (Proposify $11M rev; Qwilr $7.25M; Lawmatics $12.5M)</span></li>
+          <li><span class="arr">→</span><strong>Acquirer profile.</strong><span>Salesforce, HubSpot, PandaDoc, Ignition: all processing high proposal volume, none with structured client-facing intake AI</span></li>
+          <li><span class="arr">→</span><strong>Exit range.</strong><span>5–8× ARR at $3M = $15–24M floor. Platform exit at $10M ARR with data moat = $50–80M</span></li>
         </ul>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── CO-FOUNDER ── -->
+<!-- ── TEAM ── -->
 <section id="team">
   <div class="wrap">
-    <p class="sl reveal">Co-Founder Search</p>
-    <h2 class="reveal reveal-d1">Building something real.<br>Looking for someone<br><em>equally serious.</em></h2>
-    <p class="s-sub reveal reveal-d2">The product exists and the engine is live. We're not looking for a contractor — we want someone who sees what this becomes and wants to own a piece of it. Come build this with us.</p>
-    <div class="cf-grid">
+    <p class="sl reveal">The Team</p>
+    <h2 class="reveal reveal-d1">One founder.<br><em>Building room for four more.</em></h2>
+    <p class="s-sub reveal reveal-d2">The full-stack product is built, billing is live, and the agentic engine is in production. We're not looking for contractors. We're looking for co-builders who see what this becomes.</p>
+
+    <!-- Founder bio -->
+    <div class="founder-card reveal reveal-d3">
+      <div class="founder-avatar">PA</div>
+      <div class="founder-info">
+        <h3>Prabhu Avula</h3>
+        <div class="founder-title">Founder · CEO · Builder</div>
+        <p>Solo-built the entire Monocular stack from scratch: Next.js 16, a fully agentic AI intake engine with tool-use tracing, Supabase multi-tenant database, Clerk auth, Stripe billing with webhook sync, Inngest background jobs, PDF export, and a client review workflow. The product is live in production. Pre-team, post-build. Now focused on going from engine to market, looking for the founding team to do it with.</p>
+        <div class="founder-tags">
+          <span class="mini-badge">Next.js 16</span>
+          <span class="mini-badge">TypeScript</span>
+          <span class="mini-badge">AI APIs</span>
+          <span class="mini-badge">Supabase</span>
+          <span class="mini-badge">Stripe</span>
+          <span class="mini-badge">Inngest</span>
+          <span class="mini-badge">Full-stack SaaS</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Open roles -->
+    <div class="reveal" style="margin-top:60px; margin-bottom:26px;">
+      <p class="sl">Open Roles</p>
+      <h3 style="font-size:clamp(20px,2.5vw,28px);font-weight:800;letter-spacing:-0.03em;color:var(--ink);margin-top:8px;">We're hiring the <em style="font-style:normal;color:var(--orange);">founding team.</em></h3>
+    </div>
+
+    <div class="cf-grid" style="grid-template-columns: repeat(2,1fr);">
       <div class="cf-card reveal">
-        <div class="cf-tag">GTM / Revenue</div>
-        <h3>Head of Growth</h3>
-        <p>Agency or studio background. Knows the ICP from the inside. Has sold to or within professional service firms. Wants to build the category, not just fill a pipeline.</p>
+        <div class="cf-tag">Founding Equity · Technical</div>
+        <h3>CTO / Founding Engineer</h3>
+        <p>Takes full ownership of the technical architecture as Monocular scales from MVP to platform. Deep in TypeScript, distributed systems, and AI/LLM APIs. You're not building features for the founder. You're building the platform the company runs on. Co-founder equity for the right person. The codebase is clean, the architecture is intentional, and the technical decisions are documented.</p>
       </div>
       <div class="cf-card reveal reveal-d1">
-        <div class="cf-tag">Design / Product</div>
-        <h3>Design-Led Founder</h3>
-        <p>Obsessive about product craft. Our users have taste — the product has to feel premium. Owns the design system, marketing site, and product feel end to end.</p>
+        <div class="cf-tag">Founding Equity · AI/ML</div>
+        <h3>AI / ML Engineer</h3>
+        <p>Owns the data flywheel end-to-end: turning reviewer edits into preference pairs, risk flag outcomes into classifiers, win/loss data into pricing regression. The trace tables and labeled dataset are live today. You build the ML layer on top. Ideal background: DPO fine-tuning, structured extraction, RAG over firm history, or production-grade LLM evaluation. This is the role that builds the moat.</p>
       </div>
       <div class="cf-card reveal reveal-d2">
-        <div class="cf-tag">Vertical Expert</div>
-        <h3>Domain Partner</h3>
-        <p>Deep in legal, medical, architecture, or accounting. Sees the intake problem clearly in your vertical. Co-build the expansion thesis for equity and category ownership.</p>
+        <div class="cf-tag">Senior · GTM</div>
+        <h3>Head of Growth / Sales</h3>
+        <p>Closes design partners, converts them to paid, and builds the pipeline to the first 100 firms. Agency or studio background strongly preferred. You know the ICP from the inside, not from a persona doc. Equity plus commission on a clear ramp. The product is ready, the pricing is proven, and the ICP is sharp. We need someone who can open doors and walk through them.</p>
+      </div>
+      <div class="cf-card reveal reveal-d3">
+        <div class="cf-tag">Advisory Equity · Vertical Expansion</div>
+        <h3>Domain Expert Partners</h3>
+        <p>Deep in legal, healthcare, architecture, or accounting. Not a full-time role yet. Advisory equity in exchange for co-building a vertical config (persona prompt, extraction schema, risk library for your domain), introducing the first 3 design partners in your network, and advising through V2 launch. This is category ownership at the ground floor of a platform that will serve your entire industry.</p>
       </div>
     </div>
   </div>
@@ -1005,7 +1699,7 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
   <div class="wrap">
     <p class="sl reveal" style="text-align:center;">Get in Touch</p>
     <h2 class="reveal reveal-d1">A real company at a<br><em>real inflection point.</em></h2>
-    <p class="reveal reveal-d2">If you write early checks into AI-native vertical SaaS, or you're a co-founder who sees what this becomes — let's talk. We move fast.</p>
+    <p class="reveal reveal-d2">If you write early checks into AI-native vertical SaaS, or you're a co-founder who sees what this becomes, let's talk. We move fast.</p>
     <div class="contact-btns reveal reveal-d3">
       <a href="mailto:prabhuavula7@gmail.com" class="btn btn-fill">Email us directly</a>
       <a href="#invest" class="btn btn-outline">Back to investment</a>
@@ -1076,6 +1770,32 @@ footer p { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
   }, { threshold: 0.5 });
 
   document.querySelectorAll('.counter').forEach(el => counterObserver.observe(el));
+
+  /* ── FAQ ACCORDION ── */
+  document.querySelectorAll('.faq-q').forEach(q => {
+    q.addEventListener('click', () => {
+      const item = q.closest('.faq-item');
+      const body = item.querySelector('.faq-body');
+      const isOpen = item.classList.contains('faq-open');
+
+      // Close all open items first
+      document.querySelectorAll('.faq-item.faq-open').forEach(openItem => {
+        if (openItem !== item) {
+          openItem.classList.remove('faq-open');
+          openItem.querySelector('.faq-body').style.maxHeight = '0';
+        }
+      });
+
+      // Toggle clicked item
+      if (isOpen) {
+        item.classList.remove('faq-open');
+        body.style.maxHeight = '0';
+      } else {
+        item.classList.add('faq-open');
+        body.style.maxHeight = body.scrollHeight + 'px';
+      }
+    });
+  });
 </script>
 </body>
 </html>
